@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OT Documentation — IHS</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .home-wrap {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .home-hero {
+      padding: 56px 24px 40px;
+      text-align: center;
+      border-bottom: 1px solid var(--navy-border);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .home-hero::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 800px 400px at 50% 0%, rgba(27,133,119,0.08) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .home-hero__eyebrow {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--teal-light);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .home-hero__eyebrow::before,
+    .home-hero__eyebrow::after {
+      content: '';
+      width: 32px;
+      height: 1px;
+      background: var(--teal-dim);
+    }
+
+    .home-hero h1 {
+      font-size: 2.4rem;
+      color: var(--white);
+      margin-bottom: 12px;
+      letter-spacing: -0.02em;
+    }
+
+    .home-hero p {
+      font-size: 1rem;
+      color: var(--slate);
+      max-width: 480px;
+      margin: 0 auto 28px;
+      line-height: 1.6;
+    }
+
+    .hero-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 20px;
+      padding: 10px 20px;
+      background: var(--navy-mid);
+      border: 1px solid var(--navy-border);
+      border-radius: var(--radius-lg);
+      font-size: 0.8rem;
+      color: var(--slate);
+    }
+
+    .hero-meta span { display: flex; align-items: center; gap: 6px; }
+    .hero-meta strong { color: var(--white-dim); }
+
+    .home-main {
+      flex: 1;
+      padding: 48px 24px;
+    }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto 48px;
+    }
+
+    @media (max-width: 768px) {
+      .module-grid { grid-template-columns: 1fr; }
+    }
+
+    .module-card {
+      background: var(--navy-mid);
+      border: 1px solid var(--navy-border);
+      border-radius: var(--radius-xl);
+      padding: 32px 28px;
+      cursor: pointer;
+      transition: all 0.22s ease;
+      text-decoration: none;
+      display: block;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .module-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      opacity: 0;
+      transition: opacity 0.22s ease;
+    }
+
+    .module-card--eval::before   { background: var(--teal); }
+    .module-card--followup::before { background: var(--amber); }
+    .module-card--discharge::before { background: var(--slate-dim); }
+
+    .module-card:hover {
+      border-color: var(--slate-dim);
+      box-shadow: var(--shadow-lg);
+      transform: translateY(-2px);
+    }
+
+    .module-card:hover::before { opacity: 1; }
+
+    .module-card__icon {
+      width: 48px;
+      height: 48px;
+      border-radius: var(--radius);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      font-size: 1.4rem;
+    }
+
+    .module-card--eval .module-card__icon     { background: rgba(27,133,119,0.15); }
+    .module-card--followup .module-card__icon { background: rgba(212,135,92,0.15); }
+    .module-card--discharge .module-card__icon { background: rgba(90,122,144,0.15); }
+
+    .module-card__label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      margin-bottom: 8px;
+    }
+
+    .module-card--eval .module-card__label     { color: var(--teal-light); }
+    .module-card--followup .module-card__label { color: var(--amber-light); }
+    .module-card--discharge .module-card__label { color: var(--slate); }
+
+    .module-card h3 {
+      font-size: 1.25rem;
+      color: var(--white);
+      margin-bottom: 10px;
+      font-family: var(--font-display);
+    }
+
+    .module-card p {
+      font-size: 0.85rem;
+      color: var(--slate);
+      line-height: 1.55;
+      margin-bottom: 24px;
+    }
+
+    .module-card__arrow {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      transition: gap 0.18s ease;
+    }
+
+    .module-card--eval .module-card__arrow     { color: var(--teal-light); }
+    .module-card--followup .module-card__arrow { color: var(--amber-light); }
+    .module-card--discharge .module-card__arrow { color: var(--slate); }
+
+    .module-card:hover .module-card__arrow { gap: 10px; }
+
+    /* Visit counter + clinician setup */
+    .setup-row {
+      max-width: 960px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      margin-bottom: 40px;
+    }
+
+    @media (max-width: 600px) { .setup-row { grid-template-columns: 1fr; } }
+
+    .setup-card {
+      background: var(--navy-mid);
+      border: 1px solid var(--navy-border);
+      border-radius: var(--radius-lg);
+      padding: 22px 24px;
+    }
+
+    .setup-card__label {
+      font-size: 0.72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--slate);
+      margin-bottom: 12px;
+    }
+
+    .visit-display {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .visit-num {
+      font-family: var(--font-display);
+      font-size: 3rem;
+      font-weight: 600;
+      color: var(--amber);
+      line-height: 1;
+    }
+
+    .visit-controls {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .visit-btn {
+      width: 32px;
+      height: 32px;
+      background: var(--navy);
+      border: 1px solid var(--navy-border);
+      border-radius: var(--radius-sm);
+      color: var(--white-dim);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .visit-btn:hover { background: var(--navy-light); color: var(--white); border-color: var(--slate-dim); }
+
+    .visit-label {
+      font-size: 0.8rem;
+      color: var(--slate);
+    }
+
+    .progress-notice {
+      display: none;
+      margin-top: 10px;
+    }
+
+    .progress-notice.show { display: block; }
+
+    /* Resume draft notice */
+    .resume-notice {
+      max-width: 960px;
+      margin: 0 auto 24px;
+    }
+
+    /* Footer */
+    .home-footer {
+      padding: 20px 24px;
+      border-top: 1px solid var(--navy-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .home-footer p {
+      font-size: 0.75rem;
+      color: var(--slate-dim);
+    }
+
+    /* Animate in */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .module-card { animation: fadeUp 0.4s ease both; }
+    .module-card:nth-child(1) { animation-delay: 0.05s; }
+    .module-card:nth-child(2) { animation-delay: 0.12s; }
+    .module-card:nth-child(3) { animation-delay: 0.19s; }
+  </style>
+</head>
+<body>
+
+<div class="home-wrap">
+
+  <!-- Header -->
+  <header class="app-header">
+    <div class="app-header__logo">
+      <div class="app-header__logo-mark">OT</div>
+      <div>
+        <div class="app-header__title">OT Documentation</div>
+        <div class="app-header__subtitle">Indian Health Service · Outpatient Upper Quarter</div>
+      </div>
+    </div>
+    <div id="headerVisitBadge" class="visit-counter" style="display:none">
+      <span>Visit</span>
+      <span class="visit-counter__num" id="headerVisitNum">1</span>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <div class="home-hero">
+    <div class="home-hero__eyebrow">SOAP Note Generator</div>
+    <h1>Ready to document.</h1>
+    <p>Select a note type to begin. Your work saves automatically and can be resumed if you navigate away.</p>
+    <div class="hero-meta">
+      <span>📋 <strong>OTPF-4</strong> aligned</span>
+      <span>⚕️ <strong>Medicare</strong> compliant</span>
+      <span>📎 <strong>IHS EHR</strong> ready</span>
+      <span>🔒 <strong>Session-only</strong> storage</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <main class="home-main">
+
+    <!-- Resume draft notice (shown if session data exists) -->
+    <div class="resume-notice" id="resumeNotice" style="display:none">
+      <div class="banner banner--warning">
+        <span class="banner__icon">⚠</span>
+        <div>
+          <strong>Unsaved draft found</strong> — You have an unfinished note in progress.
+          <span id="resumeLinks"></span>
+          <button class="btn btn--ghost btn--sm" style="margin-left:8px" onclick="clearAllDrafts()">Clear drafts</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Module cards -->
+    <div class="module-grid">
+
+      <a href="eval.html" class="module-card module-card--eval">
+        <div class="module-card__icon">📝</div>
+        <div class="module-card__label">New Patient</div>
+        <h3>Evaluation Note</h3>
+        <p>Complete SOAP evaluation with occupational profile, full physical assessment, goal writing, and billing.</p>
+        <div class="module-card__arrow">
+          Start evaluation
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </a>
+
+      <a href="followup.html" class="module-card module-card--followup">
+        <div class="module-card__icon">🔁</div>
+        <div class="module-card__label">Return Visit</div>
+        <h3>Follow-Up Note</h3>
+        <p>Pull forward from prior evaluation, track goal progress, document today's treatment, and generate a concise progress note.</p>
+        <div class="module-card__arrow">
+          Start follow-up
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </a>
+
+      <a href="discharge.html" class="module-card module-card--discharge">
+        <div class="module-card__icon">✅</div>
+        <div class="module-card__label">Episode End</div>
+        <h3>Discharge Summary</h3>
+        <p>Summarize the full episode of care, document outcomes against each goal, and generate a formal discharge note.</p>
+        <div class="module-card__arrow">
+          Start discharge
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M2 7h10M8 3l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </div>
+      </a>
+
+    </div>
+
+    <!-- Setup row: visit counter + clinician -->
+    <div class="setup-row">
+
+      <div class="setup-card">
+        <div class="setup-card__label">Session Visit Counter</div>
+        <div class="visit-display">
+          <div class="visit-num" id="visitNumDisplay">1</div>
+          <div class="visit-controls">
+            <button class="visit-btn" onclick="adjustVisit(1)" title="Increment">+</button>
+            <button class="visit-btn" onclick="adjustVisit(-1)" title="Decrement">−</button>
+          </div>
+          <div>
+            <div class="visit-label">Current visit number</div>
+            <div class="visit-label" id="visitSubLabel" style="color:var(--slate-dim)">for this patient episode</div>
+          </div>
+        </div>
+        <div id="progressNotice" class="progress-notice">
+          <div class="banner banner--warning" style="margin-top:10px;margin-bottom:0">
+            <span>📋</span>
+            <span style="font-size:0.8rem"><strong>Medicare Progress Report Required</strong> — Visit 10 or multiple of 10. Today's note must include a goal-by-goal summary with measurable progress data.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="setup-card">
+        <div class="setup-card__label">Clinician Signature</div>
+        <div class="form-group mb-0">
+          <label class="form-label">Your name and credentials</label>
+          <input
+            type="text"
+            class="form-input"
+            id="clinicianInput"
+            placeholder="e.g., Jane Smith, OTR/L"
+            oninput="saveClinicianName(this.value)"
+          >
+          <p style="font-size:0.75rem;color:var(--slate-dim);margin-top:6px">
+            Auto-appended to all notes as the documentation signature line.
+          </p>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- Footer -->
+  <footer class="home-footer">
+    <p>OT Documentation App · IHS Outpatient Upper Quarter Rehabilitation</p>
+    <p>⚡ Notes exist in session memory only — no data transmitted to or stored on servers</p>
+  </footer>
+
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+  // ── Init ──────────────────────────────────────────────────
+  document.addEventListener('DOMContentLoaded', () => {
+    const count = Session.getVisitCount() || 1;
+    updateVisitDisplay(count);
+
+    const clinician = Session.getClinicianName();
+    if (clinician) document.getElementById('clinicianInput').value = clinician;
+
+    checkForDrafts();
+
+    // Show visit badge in header if > 1
+    if (count > 1) {
+      const badge = document.getElementById('headerVisitBadge');
+      badge.style.display = 'flex';
+      document.getElementById('headerVisitNum').textContent = count;
+    }
+  });
+
+  // ── Visit counter ─────────────────────────────────────────
+  function adjustVisit(delta) {
+    let count = Session.getVisitCount() || 1;
+    count = Math.max(1, count + delta);
+    Session.setVisitCount(count);
+    updateVisitDisplay(count);
+  }
+
+  function updateVisitDisplay(count) {
+    document.getElementById('visitNumDisplay').textContent = count;
+
+    // Medicare progress report notice
+    const notice = document.getElementById('progressNotice');
+    if (count > 1 && count % 10 === 0) {
+      notice.classList.add('show');
+    } else {
+      notice.classList.remove('show');
+    }
+
+    // Update header badge
+    const badge = document.getElementById('headerVisitBadge');
+    if (count > 1) {
+      badge.style.display = 'flex';
+      document.getElementById('headerVisitNum').textContent = count;
+    }
+
+    const subLabel = document.getElementById('visitSubLabel');
+    if (count % 10 === 0 && count > 1) {
+      subLabel.style.color = 'var(--yellow)';
+      subLabel.textContent = '⚠ Medicare progress report required';
+    } else {
+      subLabel.style.color = 'var(--slate-dim)';
+      subLabel.textContent = 'for this patient episode';
+    }
+  }
+
+  // ── Clinician name ────────────────────────────────────────
+  function saveClinicianName(val) {
+    Session.setClinicianName(val);
+  }
+
+  // ── Draft detection ───────────────────────────────────────
+  function checkForDrafts() {
+    const modules = ['eval', 'followup', 'discharge'];
+    const found = modules.filter(m => Session.load(m) !== null);
+
+    if (found.length === 0) return;
+
+    const notice = document.getElementById('resumeNotice');
+    notice.style.display = 'block';
+
+    const links = document.getElementById('resumeLinks');
+    const labelMap = { eval: 'Evaluation Note', followup: 'Follow-Up Note', discharge: 'Discharge Summary' };
+    const pageMap  = { eval: 'eval.html', followup: 'followup.html', discharge: 'discharge.html' };
+
+    links.innerHTML = found.map(m =>
+      `<a href="${pageMap[m]}" class="btn btn--secondary btn--sm" style="margin-left:6px">Resume ${labelMap[m]}</a>`
+    ).join('');
+  }
+
+  function clearAllDrafts() {
+    ['eval', 'followup', 'discharge'].forEach(m => Session.clear(m));
+    document.getElementById('resumeNotice').style.display = 'none';
+    UI.toast('All drafts cleared', 'info');
+  }
+</script>
+</body>
+</html>

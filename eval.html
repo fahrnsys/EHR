@@ -1,0 +1,1314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Evaluation Note — OT Documentation</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .eval-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: calc(100vh - 60px);
+    }
+    .sidebar {
+      background: var(--navy-mid);
+      border-right: 1px solid var(--navy-border);
+      padding: 20px 0;
+      position: sticky;
+      top: 60px;
+      height: calc(100vh - 60px);
+      overflow-y: auto;
+    }
+    .sidebar-heading {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--slate-dim);
+      padding: 10px 20px 5px;
+    }
+    .sidebar-link {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 8px 20px;
+      font-size: 0.82rem;
+      color: var(--slate);
+      cursor: pointer;
+      transition: var(--transition);
+      border-left: 2px solid transparent;
+    }
+    .sidebar-link:hover { color: var(--white-dim); background: var(--navy-light); }
+    .sidebar-link.active { color: var(--teal-light); border-left-color: var(--teal); background: rgba(27,133,119,0.08); }
+    .sidebar-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--navy-border); flex-shrink: 0; }
+    .sidebar-link.active .sidebar-dot { background: var(--teal); }
+    .sidebar-divider { height: 1px; background: var(--navy-border); margin: 10px 0; }
+
+    .eval-main { padding: 32px 40px; max-width: 820px; }
+    @media(max-width:900px){ .eval-layout{grid-template-columns:1fr} .sidebar{display:none} .eval-main{padding:20px} }
+
+    .eval-section { scroll-margin-top: 80px; margin-bottom: 44px; }
+
+    .region-card { background:var(--navy); border:1px solid var(--navy-border); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
+    .region-card__header { display:flex; align-items:center; justify-content:space-between; padding:11px 16px; background:var(--navy-mid); cursor:pointer; transition:var(--transition); }
+    .region-card__header:hover { background:var(--navy-light); }
+    .region-card__title { font-size:0.875rem; font-weight:600; color:var(--white-dim); }
+    .region-card__body { padding:18px 16px; display:none; }
+    .region-card__body.open { display:block; }
+    .rc-chevron { width:14px; height:14px; color:var(--slate); transition:transform 0.2s; flex-shrink:0; }
+
+    .region-pill { padding:5px 11px; border-radius:20px; font-size:0.78rem; font-weight:500; background:var(--navy-mid); border:1px solid var(--navy-border); color:var(--slate); cursor:pointer; transition:var(--transition); user-select:none; display:inline-block; margin:3px; }
+    .region-pill:hover { border-color:var(--slate-dim); color:var(--white-dim); }
+    .region-pill.selected { background:rgba(27,133,119,0.15); border-color:var(--teal); color:var(--teal-light); }
+
+    .int-card { background:var(--navy); border:1px solid var(--navy-border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+    .int-card__top { display:flex; align-items:center; gap:12px; margin-bottom:12px; }
+    .int-remove { background:none; border:none; color:var(--slate-dim); cursor:pointer; padding:4px 6px; border-radius:var(--radius-sm); transition:var(--transition); margin-left:auto; }
+    .int-remove:hover { color:var(--red-light); background:rgba(192,73,90,0.1); }
+
+    .goal-card { background:var(--navy); border:1px solid var(--navy-border); border-left:3px solid var(--teal); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+    .goal-card--ltg { border-left-color:var(--amber); }
+    .goal-card__top { display:flex; align-items:center; gap:10px; margin-bottom:12px; flex-wrap:wrap; }
+
+    .outcome-row { display:grid; grid-template-columns:1fr auto 120px; align-items:center; gap:12px; padding:12px 14px; background:var(--navy); border:1px solid var(--navy-border); border-radius:var(--radius); margin-bottom:8px; }
+
+    .wound-fields { display:none; margin-top:14px; }
+    .wound-fields.active { display:block; }
+
+    .preview-panel { background:var(--navy-mid); border-top:1px solid var(--navy-border); padding:32px 40px; }
+    .preview-layout { display:grid; grid-template-columns:1fr 360px; gap:24px; max-width:1180px; }
+    @media(max-width:900px){ .preview-layout{grid-template-columns:1fr} }
+
+    .generate-bar { position:sticky; bottom:0; background:var(--navy-mid); border-top:1px solid var(--navy-border); padding:12px 40px; display:flex; align-items:center; justify-content:space-between; gap:16px; z-index:50; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__logo">
+    <div class="app-header__logo-mark">OT</div>
+    <div>
+      <div class="app-header__title">Evaluation Note</div>
+      <div class="app-header__subtitle" id="headerDate"></div>
+    </div>
+  </div>
+  <div class="app-header__nav">
+    <span id="visitBadge" class="visit-counter" style="display:none">Visit <span class="visit-counter__num" id="visitBadgeNum">1</span></span>
+    <a href="index.html" class="btn btn--ghost btn--sm">← Home</a>
+    <button class="btn btn--secondary btn--sm" onclick="clearDraft()">Clear</button>
+    <button class="btn btn--primary btn--sm" id="generateBtn" onclick="generateNote()">Generate Note</button>
+  </div>
+</header>
+
+<!-- Precaution Banner -->
+<div id="precautionBanner" class="precaution-banner" style="margin:12px 40px 0;display:none">
+  <span style="font-size:1.1rem;flex-shrink:0">⚠</span>
+  <div><div class="precaution-banner__title">Active Precautions / Contraindications</div><ul class="precaution-banner__items" id="precautionList"></ul></div>
+</div>
+
+<div class="eval-layout">
+
+  <!-- Sidebar -->
+  <nav class="sidebar">
+    <div class="sidebar-heading">Referral</div>
+    <div class="sidebar-link active" onclick="scrollToSection('sec-referral')"><span class="sidebar-dot"></span>Demographics &amp; Referral</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-heading">S — Subjective</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-hpi')"><span class="sidebar-dot"></span>History of Present Illness</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-occ')"><span class="sidebar-dot"></span>Occupational Profile</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-pain')"><span class="sidebar-dot"></span>Pain Assessment</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-heading">O — Objective</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-outcomes')"><span class="sidebar-dot"></span>Outcome Measures</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-physical')"><span class="sidebar-dot"></span>Physical Assessment</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-interventions')"><span class="sidebar-dot"></span>Interventions &amp; CPT</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-education')"><span class="sidebar-dot"></span>Patient Education</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-equipment')"><span class="sidebar-dot"></span>Equipment Dispensed</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-heading">A — Assessment</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-assessment')"><span class="sidebar-dot"></span>Clinical Assessment</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-goals')"><span class="sidebar-dot"></span>Goals</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-heading">P — Plan &amp; Billing</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-plan')"><span class="sidebar-dot"></span>Plan</div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-billing')"><span class="sidebar-dot"></span>Billing</div>
+    <div class="sidebar-divider"></div>
+    <div class="sidebar-link" onclick="scrollToSection('sec-preview')" style="color:var(--amber-light)"><span class="sidebar-dot" style="background:var(--amber)"></span><strong>Note Preview &amp; AI</strong></div>
+  </nav>
+
+  <!-- Main form -->
+  <main class="eval-main">
+
+    <!-- ── REFERRAL & DEMOGRAPHICS ── -->
+    <section class="eval-section" id="sec-referral">
+      <div class="section-header">
+        <span class="section-title">Referral &amp; Demographics</span>
+        <span class="section-badge">Required</span>
+      </div>
+
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label form-label--required">First Name</label><input type="text" class="form-input" id="ptFirst" placeholder="First name" oninput="autosave()"></div>
+        <div class="form-group"><label class="form-label form-label--required">Last Name</label><input type="text" class="form-input" id="ptLast" placeholder="Last name" oninput="autosave()"></div>
+      </div>
+      <div class="grid-3">
+        <div class="form-group"><label class="form-label form-label--required">Age</label><input type="number" class="form-input" id="ptAge" min="0" max="120" placeholder="e.g. 45" oninput="checkMinor();autosave()"></div>
+        <div class="form-group"><label class="form-label form-label--required">Gender</label>
+          <select class="form-select" id="ptGender" onchange="autosave()">
+            <option value="">Select…</option><option>Male</option><option>Female</option><option>Non-binary</option><option>Prefer not to say</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label form-label--required">Date of Evaluation</label><input type="date" class="form-input" id="evalDate" oninput="autosave();refreshGoalDates()"></div>
+      </div>
+
+      <div id="minorRow" style="display:none">
+        <div class="banner banner--warning mb-12"><span>👤</span><span>Patient is a minor — document accompanying person.</span></div>
+        <div class="form-group"><label class="form-label form-label--required">Accompanying Person — Name &amp; Relationship</label><input type="text" class="form-input" id="companion" placeholder="e.g. Maria Rivera (mother)" oninput="autosave()"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="toggle-wrap"><input type="checkbox" id="interpreterChk" onchange="autosave()"><span class="toggle" id="interpreterToggle"></span><span>Interpreter required</span></label>
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Referring Provider</label><input type="text" class="form-input" id="refProvider" placeholder="Provider name" oninput="autosave()"></div>
+        <div class="form-group"><label class="form-label">Provider NPI <small style="text-transform:none;letter-spacing:0">(required for orthosis billing)</small></label><input type="text" class="form-input" id="refNPI" placeholder="Optional" oninput="autosave()"></div>
+      </div>
+      <div class="form-group"><label class="form-label form-label--required">Reason for Referral</label><textarea class="form-textarea" id="refReason" rows="3" placeholder="Primary reason for OT referral…" oninput="autosave()"></textarea></div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Date of Injury</label><input type="date" class="form-input" id="injuryDate" oninput="autosave()"></div>
+        <div class="form-group"><label class="form-label">Date of Surgery</label><input type="date" class="form-input" id="surgeryDate" oninput="autosave()"></div>
+      </div>
+
+      <!-- Document Upload -->
+      <div class="form-group">
+        <label class="form-label">Upload Supporting Documents</label>
+        <div id="uploadZone" onclick="document.getElementById('docUpload').click()" style="background:var(--navy);border:1px dashed var(--navy-border);border-radius:var(--radius);padding:20px;text-align:center;cursor:pointer;transition:var(--transition)" onmouseenter="this.style.borderColor='var(--slate-dim)'" onmouseleave="this.style.borderColor='var(--navy-border)'">
+          <div style="font-size:1.4rem;margin-bottom:6px">📎</div>
+          <p style="font-size:0.85rem;margin:0">Click to upload PDF, JPEG, or PNG</p>
+          <p style="font-size:0.75rem;color:var(--slate-dim);margin-top:4px">Physician protocols · EMG/NCV · Imaging · Surgeon operative notes</p>
+        </div>
+        <input type="file" id="docUpload" multiple accept=".pdf,.jpg,.jpeg,.png" style="display:none" onchange="handleDocUpload(this.files)">
+        <div id="docTypeRow" style="margin-top:12px;display:none">
+          <label class="form-label">Document type(s)</label>
+          <div class="check-group" id="docTypeGroup">
+            <label class="check-item"><input type="checkbox" value="Physician protocol"><span class="check-box"></span>Physician protocol</label>
+            <label class="check-item"><input type="checkbox" value="EMG/NCV report"><span class="check-box"></span>EMG/NCV</label>
+            <label class="check-item"><input type="checkbox" value="Imaging report"><span class="check-box"></span>Imaging</label>
+            <label class="check-item"><input type="checkbox" value="Clinical practice guideline"><span class="check-box"></span>CPG</label>
+            <label class="check-item"><input type="checkbox" value="Surgeon operative note"><span class="check-box"></span>Operative note</label>
+          </div>
+        </div>
+        <div id="uploadedFilesList" style="margin-top:8px"></div>
+      </div>
+    </section>
+
+    <!-- ── SUBJECTIVE ── -->
+    <section class="eval-section" id="sec-hpi">
+      <div class="soap-label">S <span>Subjective</span></div>
+      <div class="section-header"><span class="section-title">History of Present Illness</span></div>
+
+      <div class="form-group"><label class="form-label">Mechanism / Onset</label>
+        <div class="check-group" id="mecGroup">
+          <label class="check-item"><input type="checkbox" value="gradual onset"><span class="check-box"></span>Gradual onset</label>
+          <label class="check-item"><input type="checkbox" value="traumatic injury"><span class="check-box"></span>Traumatic injury</label>
+          <label class="check-item"><input type="checkbox" value="post-surgical"><span class="check-box"></span>Post-surgical</label>
+          <label class="check-item"><input type="checkbox" value="work-related injury"><span class="check-box"></span>Work-related</label>
+          <label class="check-item"><input type="checkbox" value="repetitive strain"><span class="check-box"></span>Repetitive strain</label>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Symptom Duration</label>
+          <div class="check-group" id="durationGroup">
+            <label class="check-item"><input type="radio" name="duration" value="acute (less than 6 weeks)"><span class="check-box"></span>Acute &lt;6 wks</label>
+            <label class="check-item"><input type="radio" name="duration" value="subacute (6-12 weeks)"><span class="check-box"></span>Subacute 6-12 wks</label>
+            <label class="check-item"><input type="radio" name="duration" value="chronic (greater than 12 weeks)"><span class="check-box"></span>Chronic &gt;12 wks</label>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Dominant Hand</label>
+          <div class="check-group" id="domHandGroup">
+            <label class="check-item"><input type="radio" name="domHand" value="right-hand dominant"><span class="check-box"></span>Right</label>
+            <label class="check-item"><input type="radio" name="domHand" value="left-hand dominant"><span class="check-box"></span>Left</label>
+            <label class="check-item"><input type="radio" name="domHand" value="ambidextrous"><span class="check-box"></span>Ambidextrous</label>
+          </div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Work Status</label>
+          <div class="check-group" id="workGroup">
+            <label class="check-item"><input type="radio" name="work" value="currently working full duty"><span class="check-box"></span>Full duty</label>
+            <label class="check-item"><input type="radio" name="work" value="working with modifications"><span class="check-box"></span>Modified duty</label>
+            <label class="check-item"><input type="radio" name="work" value="off work"><span class="check-box"></span>Off work</label>
+            <label class="check-item"><input type="radio" name="work" value="retired"><span class="check-box"></span>Retired</label>
+            <label class="check-item"><input type="radio" name="work" value="not employed"><span class="check-box"></span>Not employed</label>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Prior Treatment</label>
+          <div class="check-group" id="priorTxGroup">
+            <label class="check-item"><input type="checkbox" value="no prior occupational therapy"><span class="check-box"></span>No prior OT</label>
+            <label class="check-item"><input type="checkbox" value="prior physical therapy"><span class="check-box"></span>Prior PT</label>
+            <label class="check-item"><input type="checkbox" value="prior occupational therapy"><span class="check-box"></span>Prior OT</label>
+            <label class="check-item"><input type="checkbox" value="prior surgery"><span class="check-box"></span>Prior surgery</label>
+            <label class="check-item"><input type="checkbox" value="corticosteroid injection(s)"><span class="check-box"></span>Injection(s)</label>
+          </div>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Functional Limitations Reported</label>
+        <div class="check-group" id="funcLimitGroup">
+          <label class="check-item"><input type="checkbox" value="difficulty with activities of daily living"><span class="check-box"></span>ADLs</label>
+          <label class="check-item"><input type="checkbox" value="difficulty with work tasks"><span class="check-box"></span>Work tasks</label>
+          <label class="check-item"><input type="checkbox" value="difficulty with leisure activities"><span class="check-box"></span>Leisure</label>
+          <label class="check-item"><input type="checkbox" value="limited driving"><span class="check-box"></span>Driving</label>
+          <label class="check-item"><input type="checkbox" value="difficulty with home management"><span class="check-box"></span>Home management</label>
+          <label class="check-item"><input type="checkbox" value="difficulty with personal care and grooming"><span class="check-box"></span>Personal care</label>
+        </div>
+      </div>
+    </section>
+
+    <section class="eval-section" id="sec-occ">
+      <div class="section-header"><span class="section-title">Occupational Profile</span><span class="section-badge">OTPF-4 aligned</span></div>
+      <div class="form-group"><label class="form-label">Roles &amp; Routines Affected</label>
+        <div class="check-group" id="rolesGroup">
+          <label class="check-item"><input type="checkbox" value="worker/employee"><span class="check-box"></span>Worker</label>
+          <label class="check-item"><input type="checkbox" value="caregiver"><span class="check-box"></span>Caregiver</label>
+          <label class="check-item"><input type="checkbox" value="homemaker"><span class="check-box"></span>Homemaker</label>
+          <label class="check-item"><input type="checkbox" value="student"><span class="check-box"></span>Student</label>
+          <label class="check-item"><input type="checkbox" value="athlete/recreational participant"><span class="check-box"></span>Athlete</label>
+          <label class="check-item"><input type="checkbox" value="retiree"><span class="check-box"></span>Retiree</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Patient's Rehabilitation Goals (own words)</label><textarea class="form-textarea" id="ptGoals" rows="2" placeholder="What does the patient want to get back to doing?" oninput="autosave()"></textarea></div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Home Environment</label>
+          <div class="check-group" id="homeEnvGroup">
+            <label class="check-item"><input type="checkbox" value="lives alone"><span class="check-box"></span>Lives alone</label>
+            <label class="check-item"><input type="checkbox" value="lives with family"><span class="check-box"></span>With family</label>
+            <label class="check-item"><input type="checkbox" value="caregiver support available"><span class="check-box"></span>Caregiver support</label>
+            <label class="check-item"><input type="checkbox" value="limited social support"><span class="check-box"></span>Limited support</label>
+          </div>
+        </div>
+        <div class="form-group"><label class="form-label">Support / Context Notes</label><textarea class="form-textarea" id="supportNotes" rows="2" placeholder="Relevant barriers, context, psychosocial factors…" style="min-height:60px" oninput="autosave()"></textarea></div>
+      </div>
+    </section>
+
+    <section class="eval-section" id="sec-pain">
+      <div class="section-header"><span class="section-title">Pain Assessment — Patient Rated</span></div>
+      <div class="grid-3" style="margin-bottom:16px">
+        <div class="form-group"><label class="form-label">Current Pain (NRS 0-10)</label><div class="nrs-wrap"><input type="range" min="0" max="10" value="0" id="painCurrent" data-display="painCurrentVal" oninput="autosave()"><span class="nrs-value" id="painCurrentVal">0</span></div></div>
+        <div class="form-group"><label class="form-label">Pain at Best</label><div class="nrs-wrap"><input type="range" min="0" max="10" value="0" id="painBest" data-display="painBestVal" oninput="autosave()"><span class="nrs-value" id="painBestVal">0</span></div></div>
+        <div class="form-group"><label class="form-label">Pain at Worst</label><div class="nrs-wrap"><input type="range" min="0" max="10" value="0" id="painWorst" data-display="painWorstVal" oninput="autosave()"><span class="nrs-value" id="painWorstVal">0</span></div></div>
+      </div>
+      <div class="form-group"><label class="form-label">Pain Descriptors</label>
+        <div class="check-group" id="painDescGroup">
+          <label class="check-item"><input type="checkbox" value="aching"><span class="check-box"></span>Aching</label>
+          <label class="check-item"><input type="checkbox" value="burning"><span class="check-box"></span>Burning</label>
+          <label class="check-item"><input type="checkbox" value="sharp"><span class="check-box"></span>Sharp</label>
+          <label class="check-item"><input type="checkbox" value="throbbing"><span class="check-box"></span>Throbbing</label>
+          <label class="check-item"><input type="checkbox" value="numbness/tingling"><span class="check-box"></span>Numbness/tingling</label>
+          <label class="check-item"><input type="checkbox" value="constant"><span class="check-box"></span>Constant</label>
+          <label class="check-item"><input type="checkbox" value="intermittent"><span class="check-box"></span>Intermittent</label>
+          <label class="check-item"><input type="checkbox" value="stiffness"><span class="check-box"></span>Stiffness</label>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Aggravating Factors</label>
+          <div class="check-group mb-8" id="aggravGroup">
+            <label class="check-item"><input type="checkbox" value="gripping/grasping"><span class="check-box"></span>Gripping</label>
+            <label class="check-item"><input type="checkbox" value="overhead reaching"><span class="check-box"></span>Overhead reach</label>
+            <label class="check-item"><input type="checkbox" value="repetitive hand use"><span class="check-box"></span>Repetitive use</label>
+            <label class="check-item"><input type="checkbox" value="lifting"><span class="check-box"></span>Lifting</label>
+            <label class="check-item"><input type="checkbox" value="prolonged positioning"><span class="check-box"></span>Prolonged position</label>
+          </div>
+          <textarea class="form-textarea" id="aggravText" rows="1" style="min-height:36px" placeholder="Additional…" oninput="autosave()"></textarea>
+        </div>
+        <div class="form-group"><label class="form-label">Relieving Factors</label>
+          <div class="check-group mb-8" id="relieveGroup">
+            <label class="check-item"><input type="checkbox" value="rest"><span class="check-box"></span>Rest</label>
+            <label class="check-item"><input type="checkbox" value="ice/heat"><span class="check-box"></span>Ice/heat</label>
+            <label class="check-item"><input type="checkbox" value="elevation"><span class="check-box"></span>Elevation</label>
+            <label class="check-item"><input type="checkbox" value="splinting/bracing"><span class="check-box"></span>Splinting</label>
+            <label class="check-item"><input type="checkbox" value="over-the-counter medications"><span class="check-box"></span>OTC meds</label>
+          </div>
+          <textarea class="form-textarea" id="relieveText" rows="1" style="min-height:36px" placeholder="Additional…" oninput="autosave()"></textarea>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── OBJECTIVE ── -->
+    <section class="eval-section" id="sec-outcomes">
+      <div class="soap-label">O <span>Objective</span></div>
+      <div class="section-header"><span class="section-title">Patient-Rated Outcome Measures</span></div>
+      <div class="outcome-row">
+        <div><div style="font-weight:600;font-size:0.875rem">UEFI</div><div style="font-size:0.78rem;color:var(--slate)">Upper Extremity Functional Index — 20 items, scored /80</div></div>
+        <label class="toggle-wrap"><input type="checkbox" id="uefiChk" onchange="toggleOutcome('uefi',this.checked)"><span class="toggle"></span><span>Administered</span></label>
+        <div id="uefiScore" style="display:none;flex-direction:column;align-items:center"><input type="number" class="form-input" id="uefiVal" min="0" max="80" placeholder="Score" style="text-align:center" oninput="autosave()"><span style="font-size:0.72rem;color:var(--slate-dim)">/80</span></div>
+      </div>
+      <div class="outcome-row">
+        <div><div style="font-weight:600;font-size:0.875rem">PRWE</div><div style="font-size:0.78rem;color:var(--slate)">Patient-Rated Wrist/Hand Evaluation — scored /100</div></div>
+        <label class="toggle-wrap"><input type="checkbox" id="prweChk" onchange="toggleOutcome('prwe',this.checked)"><span class="toggle"></span><span>Administered</span></label>
+        <div id="prweScore" style="display:none;flex-direction:column;align-items:center"><input type="number" class="form-input" id="prweVal" min="0" max="100" placeholder="Score" style="text-align:center" oninput="autosave()"><span style="font-size:0.72rem;color:var(--slate-dim)">/100</span></div>
+      </div>
+      <div class="outcome-row">
+        <div><div style="font-weight:600;font-size:0.875rem">QuickDASH</div><div style="font-size:0.78rem;color:var(--slate)">Disabilities of the Arm, Shoulder and Hand (Quick) — scored /100</div></div>
+        <label class="toggle-wrap"><input type="checkbox" id="qdashChk" onchange="toggleOutcome('qdash',this.checked)"><span class="toggle"></span><span>Administered</span></label>
+        <div id="qdashScore" style="display:none;flex-direction:column;align-items:center"><input type="number" class="form-input" id="qdashVal" min="0" max="100" placeholder="Score" style="text-align:center" oninput="autosave()"><span style="font-size:0.72rem;color:var(--slate-dim)">/100</span></div>
+      </div>
+    </section>
+
+    <section class="eval-section" id="sec-physical">
+      <div class="section-header"><span class="section-title">Physical Assessment</span></div>
+
+      <!-- ROM -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('rom')"><span class="region-card__title">Range of Motion (ROM)</span><svg class="rc-chevron" id="chev-rom" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-rom">
+          <div id="rom-pills" class="mb-12"></div>
+          <div class="form-group"><label class="form-label">AROM / PROM Findings</label><textarea class="form-textarea" id="romFindings" rows="4" placeholder="Document by region. Include degrees, WNL notations, and contralateral comparisons.&#10;e.g. Shoulder AROM: Flexion 110° (limited by pain), Abduction 95°, ER 40° WNL…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Strength -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('str')"><span class="region-card__title">Strength</span><svg class="rc-chevron" id="chev-str" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-str">
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">Grip (lbs or kg)</label><div class="flex gap-8"><input type="text" class="form-input" id="gripAffected" placeholder="Affected side" oninput="autosave()"><input type="text" class="form-input" id="gripContralateral" placeholder="Contralateral" oninput="autosave()"></div></div>
+            <div class="form-group"><label class="form-label">Pinch Strength</label><input type="text" class="form-input" id="pinchStr" placeholder="Lateral, tip, key pinch (lbs/kg)" oninput="autosave()"></div>
+          </div>
+          <div class="form-group"><label class="form-label">MMT &amp; Specific Muscle Testing</label><textarea class="form-textarea" id="mmtFindings" rows="3" placeholder="e.g. Shoulder ER 4/5 bilateral, shoulder abduction 3+/5 left, wrist extensors 4/5 right…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Special Tests -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('spt')"><span class="region-card__title">Special Tests</span><svg class="rc-chevron" id="chev-spt" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-spt">
+          <div id="specialTestsList"></div>
+          <button class="btn btn--secondary btn--sm" onclick="addSpecialTest()">+ Add test</button>
+        </div>
+      </div>
+
+      <!-- Neuro -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('neu')"><span class="region-card__title">Neurological Function</span><svg class="rc-chevron" id="chev-neu" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-neu">
+          <div class="form-group"><label class="form-label">Sensation</label><textarea class="form-textarea" id="sensation" rows="3" placeholder="Light touch, 2-point discrimination, Semmes-Weinstein monofilament by region and nerve distribution…" oninput="autosave()"></textarea></div>
+          <div class="form-group"><label class="form-label">Nerve Tension Tests &amp; Reflexes</label><textarea class="form-textarea" id="nerveTension" rows="2" placeholder="e.g. Phalen's positive at 30 sec, Tinel's positive at carpal tunnel; DTRs 2+ bilateral…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Palpation -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('pal')"><span class="region-card__title">Palpation</span><svg class="rc-chevron" id="chev-pal" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-pal">
+          <div class="form-group"><label class="form-label">Tenderness — Location &amp; Severity</label><textarea class="form-textarea" id="palpation" rows="3" placeholder="e.g. Moderate tenderness at lateral epicondyle and common extensor origin; mild tenderness at radial tunnel…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Edema -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('ede')"><span class="region-card__title">Edema</span><svg class="rc-chevron" id="chev-ede" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-ede">
+          <div class="grid-2">
+            <div class="form-group"><label class="form-label">Severity</label>
+              <div class="check-group" id="edemaGroup">
+                <label class="check-item"><input type="radio" name="edema" value="no edema present"><span class="check-box"></span>None</label>
+                <label class="check-item"><input type="radio" name="edema" value="mild edema"><span class="check-box"></span>Mild</label>
+                <label class="check-item"><input type="radio" name="edema" value="moderate edema"><span class="check-box"></span>Moderate</label>
+                <label class="check-item"><input type="radio" name="edema" value="severe edema"><span class="check-box"></span>Severe</label>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Character</label>
+              <div class="check-group">
+                <label class="check-item"><input type="radio" name="edemaPit" value="pitting"><span class="check-box"></span>Pitting</label>
+                <label class="check-item"><input type="radio" name="edemaPit" value="non-pitting"><span class="check-box"></span>Non-pitting</label>
+              </div>
+            </div>
+          </div>
+          <div class="form-group"><label class="form-label">Measurements &amp; Location</label><textarea class="form-textarea" id="edemaMeasure" rows="2" placeholder="Circumferential or volumetric measurements with location…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Posture -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('pos')"><span class="region-card__title">Posture &amp; Observation</span><svg class="rc-chevron" id="chev-pos" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-pos">
+          <div class="form-group">
+            <div class="check-group mb-8" id="postureGroup">
+              <label class="check-item"><input type="checkbox" value="forward head posture"><span class="check-box"></span>Forward head posture</label>
+              <label class="check-item"><input type="checkbox" value="elevated scapula"><span class="check-box"></span>Elevated scapula</label>
+              <label class="check-item"><input type="checkbox" value="rounded shoulders"><span class="check-box"></span>Rounded shoulders</label>
+              <label class="check-item"><input type="checkbox" value="guarding"><span class="check-box"></span>Guarding</label>
+              <label class="check-item"><input type="checkbox" value="protective posturing"><span class="check-box"></span>Protective posturing</label>
+              <label class="check-item"><input type="checkbox" value="splint in use"><span class="check-box"></span>Splint in use</label>
+              <label class="check-item"><input type="checkbox" value="sling in use"><span class="check-box"></span>Sling in use</label>
+            </div>
+            <textarea class="form-textarea" id="postureNotes" rows="2" placeholder="Additional observation notes…" oninput="autosave()"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- FMC -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('fmc')"><span class="region-card__title">Fine Motor Coordination (FMC)</span><svg class="rc-chevron" id="chev-fmc" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-fmc">
+          <div class="form-group"><textarea class="form-textarea" id="fmcFindings" rows="3" placeholder="Nine-Hole Peg Test (seconds, comparison to norms), Purdue Pegboard, or functional observation…" oninput="autosave()"></textarea></div>
+        </div>
+      </div>
+
+      <!-- Wound/Scar -->
+      <div class="region-card"><div class="region-card__header" onclick="toggleRC('wnd')"><span class="region-card__title">Wound &amp; Scar</span><svg class="rc-chevron" id="chev-wnd" viewBox="0 0 14 14" fill="none"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></div>
+        <div class="region-card__body" id="rcb-wnd">
+          <div class="form-group"><label class="form-label">Type</label>
+            <div class="check-group" id="woundTypeGroup">
+              <label class="check-item"><input type="radio" name="woundType" value="wound" onchange="toggleWoundFields('wound')"><span class="check-box"></span>Active wound</label>
+              <label class="check-item"><input type="radio" name="woundType" value="scar" onchange="toggleWoundFields('scar')"><span class="check-box"></span>Scar</label>
+              <label class="check-item"><input type="radio" name="woundType" value="none" onchange="toggleWoundFields('none')"><span class="check-box"></span>Not applicable</label>
+            </div>
+          </div>
+          <div id="woundActiveFields" class="wound-fields">
+            <div class="banner banner--danger mb-14"><span>⚠</span><span style="font-size:0.8rem"><strong>LCD L35125 applies.</strong> All fields below are required at every wound care visit.</span></div>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label form-label--required">Wound Location</label><input type="text" class="form-input" id="woundLoc" placeholder="e.g. dorsal hand, 2nd digit PIP" oninput="autosave()"></div>
+              <div class="form-group"><label class="form-label">Wound Type</label>
+                <select class="form-select" id="woundWoundType" onchange="autosave()"><option value="">Select…</option><option>Surgical</option><option>Traumatic</option><option>Pressure Stage III</option><option>Pressure Stage IV</option><option>Venous</option><option>Diabetic</option><option>Other</option></select>
+              </div>
+            </div>
+            <div class="grid-3">
+              <div class="form-group"><label class="form-label form-label--required">Length (cm)</label><input type="number" class="form-input" id="woundL" step="0.1" min="0" placeholder="0.0" oninput="autosave()"></div>
+              <div class="form-group"><label class="form-label form-label--required">Width (cm)</label><input type="number" class="form-input" id="woundW" step="0.1" min="0" placeholder="0.0" oninput="autosave()"></div>
+              <div class="form-group"><label class="form-label form-label--required">Depth (cm)</label><input type="number" class="form-input" id="woundD" step="0.1" min="0" placeholder="0.0" oninput="autosave()"></div>
+            </div>
+            <div class="form-group"><label class="form-label form-label--required">Tissue Present</label>
+              <div class="check-group" id="woundTissueGroup">
+                <label class="check-item"><input type="checkbox" value="granulation tissue"><span class="check-box"></span>Granulation</label>
+                <label class="check-item"><input type="checkbox" value="necrotic/eschar"><span class="check-box"></span>Necrotic/eschar</label>
+                <label class="check-item"><input type="checkbox" value="slough"><span class="check-box"></span>Slough</label>
+                <label class="check-item"><input type="checkbox" value="biofilm"><span class="check-box"></span>Biofilm</label>
+                <label class="check-item"><input type="checkbox" value="epithelializing"><span class="check-box"></span>Epithelializing</label>
+                <label class="check-item"><input type="checkbox" value="fibrinous exudate"><span class="check-box"></span>Fibrinous exudate</label>
+              </div>
+            </div>
+            <div class="grid-2">
+              <div class="form-group"><label class="form-label">Drainage</label>
+                <div class="check-group mb-8" id="woundDrainageGroup">
+                  <label class="check-item"><input type="radio" name="wdrainage" value="none"><span class="check-box"></span>None</label>
+                  <label class="check-item"><input type="radio" name="wdrainage" value="serous"><span class="check-box"></span>Serous</label>
+                  <label class="check-item"><input type="radio" name="wdrainage" value="serosanguineous"><span class="check-box"></span>Serosanguineous</label>
+                  <label class="check-item"><input type="radio" name="wdrainage" value="purulent"><span class="check-box"></span>Purulent</label>
+                </div>
+                <div class="check-group">
+                  <label class="check-item"><input type="radio" name="wvolume" value="scant"><span class="check-box"></span>Scant</label>
+                  <label class="check-item"><input type="radio" name="wvolume" value="moderate"><span class="check-box"></span>Moderate</label>
+                  <label class="check-item"><input type="radio" name="wvolume" value="heavy"><span class="check-box"></span>Heavy</label>
+                </div>
+              </div>
+              <div class="form-group"><label class="form-label">Infection Signs</label>
+                <div class="check-group mb-8" id="woundInfectionGroup">
+                  <label class="check-item"><input type="radio" name="winfect" value="no signs of infection present"><span class="check-box"></span>None</label>
+                  <label class="check-item"><input type="radio" name="winfect" value="signs of infection present"><span class="check-box"></span>Present</label>
+                </div>
+                <textarea class="form-textarea" id="wInfectDesc" rows="1" style="min-height:36px" placeholder="Describe if present…" oninput="autosave()"></textarea>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Periwound Skin</label>
+              <div class="check-group" id="periwoundGroup">
+                <label class="check-item"><input type="checkbox" value="intact periwound skin"><span class="check-box"></span>Intact</label>
+                <label class="check-item"><input type="checkbox" value="maceration"><span class="check-box"></span>Maceration</label>
+                <label class="check-item"><input type="checkbox" value="erythema"><span class="check-box"></span>Erythema</label>
+                <label class="check-item"><input type="checkbox" value="induration"><span class="check-box"></span>Induration</label>
+              </div>
+            </div>
+            <div class="form-group"><label class="form-label">Tunneling / Undermining</label>
+              <div class="check-group mb-8">
+                <label class="check-item"><input type="radio" name="tunneling" value="no tunneling or undermining"><span class="check-box"></span>None</label>
+                <label class="check-item"><input type="radio" name="tunneling" value="tunneling present"><span class="check-box"></span>Present</label>
+              </div>
+              <textarea class="form-textarea" id="tunnelingDesc" rows="1" style="min-height:36px" placeholder="Location and depth if present…" oninput="autosave()"></textarea>
+            </div>
+          </div>
+          <div id="woundScarFields" class="wound-fields">
+            <div class="form-group"><label class="form-label">Scar Description</label><textarea class="form-textarea" id="scarDescription" rows="3" placeholder="Vancouver Scar Scale: vascularity, pigmentation, pliability, height. Include dimensions, adherence, sensitivity, and functional impact…" oninput="autosave()"></textarea></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── INTERVENTIONS ── -->
+    <section class="eval-section" id="sec-interventions">
+      <div class="section-header">
+        <span class="section-title">Treatment / Interventions</span>
+        <button class="btn btn--secondary btn--sm" onclick="addIntervention()">+ Add CPT Code</button>
+      </div>
+      <div id="interventionList"></div>
+      <p style="font-size:0.78rem;color:var(--slate-dim);margin-top:6px">Expand each code row to view the full definition, clinical examples, documentation requirements, and audit flags.</p>
+    </section>
+
+    <!-- ── EDUCATION ── -->
+    <section class="eval-section" id="sec-education">
+      <div class="section-header"><span class="section-title">Patient Education</span></div>
+      <div class="check-group" id="educationGroup">
+        <label class="check-item"><input type="checkbox" value="home exercise program provided and reviewed"><span class="check-box"></span>HEP provided</label>
+        <label class="check-item"><input type="checkbox" value="joint protection techniques"><span class="check-box"></span>Joint protection</label>
+        <label class="check-item"><input type="checkbox" value="energy conservation"><span class="check-box"></span>Energy conservation</label>
+        <label class="check-item"><input type="checkbox" value="edema management strategies"><span class="check-box"></span>Edema management</label>
+        <label class="check-item"><input type="checkbox" value="wound care and dressing change instructions"><span class="check-box"></span>Wound/scar care</label>
+        <label class="check-item"><input type="checkbox" value="splint wearing schedule and care"><span class="check-box"></span>Splint schedule</label>
+        <label class="check-item"><input type="checkbox" value="activity modification"><span class="check-box"></span>Activity modification</label>
+        <label class="check-item"><input type="checkbox" value="pain management strategies"><span class="check-box"></span>Pain management</label>
+        <label class="check-item"><input type="checkbox" value="return-to-work guidance"><span class="check-box"></span>Return-to-work</label>
+        <label class="check-item"><input type="checkbox" value="return-to-sport guidance"><span class="check-box"></span>Return-to-sport</label>
+      </div>
+      <div class="form-group mt-12"><label class="form-label">Additional Education</label><textarea class="form-textarea" id="educationNotes" rows="2" placeholder="Additional education topics…" oninput="autosave()"></textarea></div>
+    </section>
+
+    <!-- ── EQUIPMENT ── -->
+    <section class="eval-section" id="sec-equipment">
+      <div class="section-header"><span class="section-title">Equipment Dispensed</span></div>
+      <div class="form-group"><label class="form-label">Orthotics</label>
+        <div class="check-group" id="orthoticsGroup">
+          <label class="check-item"><input type="checkbox" value="wrist cock-up splint"><span class="check-box"></span>Wrist cock-up</label>
+          <label class="check-item"><input type="checkbox" value="resting hand splint"><span class="check-box"></span>Resting hand</label>
+          <label class="check-item"><input type="checkbox" value="thumb spica splint"><span class="check-box"></span>Thumb spica</label>
+          <label class="check-item"><input type="checkbox" value="buddy straps"><span class="check-box"></span>Buddy straps</label>
+          <label class="check-item"><input type="checkbox" value="dynamic extension splint"><span class="check-box"></span>Dynamic extension</label>
+          <label class="check-item"><input type="checkbox" value="cylinder cast"><span class="check-box"></span>Cylinder cast</label>
+        </div>
+      </div>
+      <div id="orthosisDocSection" style="display:none">
+        <div class="banner banner--info mb-12"><span>ℹ</span><span style="font-size:0.8rem"><strong>Noridian ULO Checklist applies.</strong> Complete these fields for Medicare compliance.</span></div>
+        <div class="grid-2">
+          <div class="form-group"><label class="form-label">Orthosis Type</label>
+            <div class="check-group" id="orthosisTypeGroup">
+              <label class="check-item"><input type="radio" name="orthosisType" value="prefabricated" onchange="updateOrthosisTypeDocs()"><span class="check-box"></span>Prefabricated</label>
+              <label class="check-item"><input type="radio" name="orthosisType" value="custom-fitted" onchange="updateOrthosisTypeDocs()"><span class="check-box"></span>Custom-fitted</label>
+              <label class="check-item"><input type="radio" name="orthosisType" value="custom-fabricated" onchange="updateOrthosisTypeDocs()"><span class="check-box"></span>Custom-fabricated</label>
+            </div>
+          </div>
+          <div class="form-group" id="orthosisModRow" style="display:none"><label class="form-label">Modifications Made at Fitting</label><textarea class="form-textarea" id="orthosisModifications" rows="2" placeholder="Required for custom-fitted: describe trimming, bending, molding…" style="min-height:56px" oninput="autosave()"></textarea></div>
+        </div>
+        <div class="form-group" id="prefabJustRow" style="display:none"><label class="form-label form-label--required">Reason Prefabricated Was Inadequate</label><textarea class="form-textarea" id="prefabJustification" rows="2" placeholder="Required for custom-fabricated…" oninput="autosave()"></textarea></div>
+        <div class="form-group"><label class="form-label">Prior Treatments or Devices Tried</label><textarea class="form-textarea" id="priorDevices" rows="2" placeholder="Any prior orthotics, splints, or conservative interventions tried for this condition…" oninput="autosave()"></textarea></div>
+      </div>
+      <div class="form-group"><label class="form-label">Compression</label>
+        <div class="check-group" id="compressionGroup">
+          <label class="check-item"><input type="checkbox" value="compression glove (Isotoner)"><span class="check-box"></span>Isotoner glove</label>
+          <label class="check-item"><input type="checkbox" value="Jobst compression sleeve"><span class="check-box"></span>Jobst sleeve</label>
+          <label class="check-item"><input type="checkbox" value="self-adherent wrap (Coban)"><span class="check-box"></span>Coban</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Adaptive Equipment</label>
+        <div class="check-group" id="adaptiveGroup">
+          <label class="check-item"><input type="checkbox" value="rocker knife"><span class="check-box"></span>Rocker knife</label>
+          <label class="check-item"><input type="checkbox" value="built-up handle utensils"><span class="check-box"></span>Built-up handles</label>
+          <label class="check-item"><input type="checkbox" value="jar opener"><span class="check-box"></span>Jar opener</label>
+          <label class="check-item"><input type="checkbox" value="button hook"><span class="check-box"></span>Button hook</label>
+          <label class="check-item"><input type="checkbox" value="dressing stick"><span class="check-box"></span>Dressing stick</label>
+          <label class="check-item"><input type="checkbox" value="long-handled sponge"><span class="check-box"></span>Long-handled sponge</label>
+          <label class="check-item"><input type="checkbox" value="key turner"><span class="check-box"></span>Key turner</label>
+          <label class="check-item"><input type="checkbox" value="reacher"><span class="check-box"></span>Reacher</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">DME</label>
+        <div class="check-group" id="dmeGroup">
+          <label class="check-item"><input type="checkbox" value="sling"><span class="check-box"></span>Sling</label>
+          <label class="check-item"><input type="checkbox" value="TENS unit"><span class="check-box"></span>TENS unit</label>
+          <label class="check-item"><input type="checkbox" value="continuous passive motion (CPM) device"><span class="check-box"></span>CPM device</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Other / Unlisted</label><textarea class="form-textarea" id="equipmentOther" rows="1" style="min-height:38px" placeholder="Any equipment not listed above…" oninput="autosave()"></textarea></div>
+    </section>
+
+    <!-- ── ASSESSMENT ── -->
+    <section class="eval-section" id="sec-assessment">
+      <div class="soap-label">A <span>Assessment</span></div>
+      <div class="section-header"><span class="section-title">Clinical Assessment</span><span class="section-badge">AI-generated — review and edit</span></div>
+
+      <div class="form-group"><label class="form-label form-label--required">OT Evaluation Complexity</label>
+        <div class="check-group" id="evalComplexityGroup">
+          <label class="check-item" data-tip="1-3 deficits, no comorbidities affecting reasoning"><input type="radio" name="evalComplexity" value="97165 (Low Complexity)" onchange="updateBilling()"><span class="check-box"></span>Low — 97165</label>
+          <label class="check-item" data-tip="3-5 deficits, comorbidities may be present"><input type="radio" name="evalComplexity" value="97166 (Moderate Complexity)" onchange="updateBilling()"><span class="check-box"></span>Moderate — 97166</label>
+          <label class="check-item" data-tip="5+ deficits, 3+ comorbidities"><input type="radio" name="evalComplexity" value="97167 (High Complexity)" onchange="updateBilling()"><span class="check-box"></span>High — 97167</label>
+        </div>
+        <p style="font-size:0.75rem;color:var(--slate-dim);margin-top:6px">Components: (1) occupational profile and medical history, (2) assessments of occupational performance, (3) clinical decision making</p>
+      </div>
+      <div class="form-group"><label class="form-label">Assessment Narrative</label><textarea class="form-textarea" id="assessmentNarrative" rows="6" placeholder="AI will generate this from your entries. You can also type here directly.&#10;&#10;Must include: skilled care rationale beyond the diagnosis, functional limitation statement, differential diagnosis, and prognosis with OT intervention." oninput="autosave()"></textarea></div>
+    </section>
+
+    <!-- ── GOALS ── -->
+    <section class="eval-section" id="sec-goals">
+      <div class="section-header">
+        <span class="section-title">Goals</span>
+        <div class="flex gap-8">
+          <button class="btn btn--secondary btn--sm" onclick="addGoal('STG')">+ STG</button>
+          <button class="btn btn--secondary btn--sm" onclick="addGoal('LTG')">+ LTG</button>
+        </div>
+      </div>
+      <div class="banner banner--info mb-14"><span>ℹ</span><span style="font-size:0.8rem"><strong>Goal format enforcer active:</strong> Condition + Behavior + Criterion + Timeline. Goals are ordered by target date in the final note.</span></div>
+      <div id="goalsList"></div>
+    </section>
+
+    <!-- ── PLAN ── -->
+    <section class="eval-section" id="sec-plan">
+      <div class="soap-label">P <span>Plan</span></div>
+      <div class="section-header"><span class="section-title">Plan</span></div>
+      <div class="grid-2">
+        <div class="form-group"><label class="form-label">Frequency &amp; Duration</label>
+          <select class="form-select" id="freqSelect" onchange="autosave()">
+            <option value="">Select…</option>
+            <option>1x/week x 4 weeks</option><option>1x/week x 6 weeks</option><option>1x/week x 8 weeks</option>
+            <option>2x/week x 4 weeks</option><option>2x/week x 6 weeks</option><option>2x/week x 8 weeks</option>
+            <option>3x/week x 4 weeks</option><option>3x/week x 6 weeks</option>
+            <option>Custom (see below)</option>
+          </select>
+        </div>
+        <div class="form-group"><label class="form-label">Custom Frequency</label><input type="text" class="form-input" id="freqCustom" placeholder="e.g. 2x/week x 3 weeks, then 1x/week x 4 weeks" oninput="autosave()"></div>
+      </div>
+      <div class="form-group"><label class="form-label">Authorization / Referral Note</label><input type="text" class="form-input" id="authNote" placeholder="e.g. Referral on file for 12 visits" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label">Planned CPT Codes for Future Visits</label>
+        <div class="check-group" id="plannedCPTGroup">
+          <label class="check-item"><input type="checkbox" value="97110 (Therapeutic Exercise)"><span class="check-box"></span>97110</label>
+          <label class="check-item"><input type="checkbox" value="97530 (Therapeutic Activities)"><span class="check-box"></span>97530</label>
+          <label class="check-item"><input type="checkbox" value="97140 (Manual Therapy)"><span class="check-box"></span>97140</label>
+          <label class="check-item"><input type="checkbox" value="97112 (Neuromuscular Reeducation)"><span class="check-box"></span>97112</label>
+          <label class="check-item"><input type="checkbox" value="97535 (Self-Care Training)"><span class="check-box"></span>97535</label>
+          <label class="check-item"><input type="checkbox" value="97760 (Orthotic — Initial)"><span class="check-box"></span>97760</label>
+          <label class="check-item"><input type="checkbox" value="97763 (Orthotic — Subsequent)"><span class="check-box"></span>97763</label>
+          <label class="check-item"><input type="checkbox" value="97124 (Massage)"><span class="check-box"></span>97124</label>
+          <label class="check-item"><input type="checkbox" value="97168 (Re-Evaluation)"><span class="check-box"></span>97168</label>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── BILLING ── -->
+    <section class="eval-section" id="sec-billing">
+      <div class="section-header"><span class="section-title">Billing</span><span class="section-badge">Pulled from Objective</span></div>
+      <div id="billingList"><p style="color:var(--slate);font-size:0.85rem">Select evaluation complexity above and add CPT codes in the interventions section — they will appear here automatically.</p></div>
+    </section>
+
+    <div style="height:80px"></div>
+  </main>
+</div>
+
+<!-- ── NOTE PREVIEW & AI ── -->
+<div class="preview-panel" id="sec-preview">
+  <div style="max-width:1180px;margin:0 auto">
+    <div class="section-header mb-24">
+      <h2 style="font-family:var(--font-display);font-size:1.3rem">Note Preview &amp; AI Refinement</h2>
+      <button class="btn btn--primary" id="generateBtn2" onclick="generateNote()">✦ Generate Note</button>
+    </div>
+    <div class="preview-layout">
+      <div>
+        <div class="copy-bar">
+          <button class="btn btn--secondary btn--sm" onclick="copySection('full')">📋 Copy full note</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('S')">S only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('O')">O only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('A')">A only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('P')">P only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('BILLING')">Billing</button>
+          <button class="btn btn--ghost btn--sm" onclick="window.print()">🖨 Print</button>
+        </div>
+        <div class="note-preview" id="notePreview"><span style="color:var(--slate-dim);font-size:0.85rem">Complete the form above and click Generate Note. Your Medicare-compliant SOAP note will appear here ready to copy into the IHS EHR.</span></div>
+      </div>
+      <div>
+        <div class="chat-panel">
+          <div class="chat-panel__header"><div class="chat-panel__dot"></div><span class="chat-panel__title">AI Note Refinement</span></div>
+          <div class="chat-panel__messages" id="chatMessages">
+            <div class="chat-msg chat-msg--ai">Generate your note first, then ask me to refine any section. I can strengthen the skilled care justification, adjust the length, improve functional context, simplify language, or make any other changes you need.</div>
+          </div>
+          <div class="chat-panel__chips">
+            <span class="chat-chip" onclick="sendChip(this)">Strengthen skilled justification</span>
+            <span class="chat-chip" onclick="sendChip(this)">Shorten the assessment</span>
+            <span class="chat-chip" onclick="sendChip(this)">Add functional context</span>
+            <span class="chat-chip" onclick="sendChip(this)">Simplify language</span>
+            <span class="chat-chip" onclick="sendChip(this)">Expand HEP instructions</span>
+            <span class="chat-chip" onclick="sendChip(this)">Review Medicare compliance</span>
+          </div>
+          <div class="chat-panel__input-row">
+            <input type="text" class="chat-panel__input" id="chatInput" placeholder="Ask to refine the note…" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn--primary btn--sm" id="chatSendBtn" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="generate-bar no-print">
+  <span style="font-size:0.8rem;color:var(--slate)" id="autosaveStatus">Auto-saves as you type</span>
+  <div class="flex gap-8">
+    <button class="btn btn--secondary btn--sm" onclick="scrollToSection('sec-preview')">Jump to preview</button>
+    <button class="btn btn--primary" id="generateBtn3" onclick="generateNote()">✦ Generate Note</button>
+  </div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+// ── State ─────────────────────────────────────────────────────
+let intCount = 0, goalCount = 0;
+let currentNote = '', chatHistory = [];
+let uploadedFiles = [];
+
+const BODY_REGIONS = ['Cervical spine','Shoulder','Elbow','Forearm','Wrist','Hand/Digits'];
+const SPECIAL_TESTS = {
+  'Shoulder':       ['Hawkins-Kennedy','Neer impingement','Empty can','Drop arm',"Speed's","Yergason's","O'Brien (SLAP)",'Apprehension/Relocation'],
+  'Elbow':          ["Cozen's (lateral epicondyle)",'Medial epicondyle palpation','Valgus stress',"Tinel's at cubital tunnel"],
+  'Wrist':          ["Watson's (scaphoid shift)",'TFCC grind test',"Finkelstein's (de Quervain's)",'Lunotriquetral shear','Wrist grind test'],
+  'Hand':           ["Phalen's","Reverse Phalen's","Tinel's at carpal tunnel",'Durkan compression test','Allen\'s test'],
+  'Cervical spine': ["Spurling's",'Cervical distraction','Upper limb tension test (ULTT)','Shoulder abduction test'],
+};
+
+// ── Init ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  const today = new Date().toISOString().split('T')[0];
+  document.getElementById('evalDate').value = today;
+  document.getElementById('headerDate').textContent = NoteBuilder.formatDate(today);
+
+  const vc = Session.getVisitCount() || 1;
+  if (vc > 1) { document.getElementById('visitBadge').style.display='flex'; document.getElementById('visitBadgeNum').textContent=vc; }
+
+  // Build region pills
+  BODY_REGIONS.forEach(r => {
+    ['rom-pills'].forEach(container => {
+      const pill = document.createElement('span');
+      pill.className = 'region-pill';
+      pill.textContent = r;
+      pill.dataset.region = r;
+      pill.onclick = () => { pill.classList.toggle('selected'); autosave(); };
+      document.getElementById(container)?.appendChild(pill);
+    });
+  });
+
+  UI.initCheckItems(document.body);
+  UI.initSliders(document.body);
+  UI.initToggles(document.body);
+
+  document.getElementById('orthoticsGroup').addEventListener('change', () => {
+    const hasOrtho = document.querySelectorAll('#orthoticsGroup input:checked').length > 0;
+    document.getElementById('orthosisDocSection').style.display = hasOrtho ? 'block' : 'none';
+  });
+
+  const draft = Session.load('eval');
+  if (draft) restoreDraft(draft);
+  updateBilling();
+
+  // Sidebar active state on scroll
+  const sections = document.querySelectorAll('.eval-section');
+  const links = document.querySelectorAll('.sidebar-link');
+  window.addEventListener('scroll', () => {
+    let current = '';
+    sections.forEach(s => { if (window.scrollY >= s.offsetTop - 100) current = s.id; });
+    links.forEach(l => {
+      l.classList.remove('active');
+      if (l.getAttribute('onclick')?.includes(current)) l.classList.add('active');
+    });
+  });
+});
+
+// ── Utilities ─────────────────────────────────────────────────
+function scrollToSection(id) { document.getElementById(id)?.scrollIntoView({behavior:'smooth',block:'start'}); }
+function getVal(id) { return document.getElementById(id)?.value || ''; }
+function getChecked(groupId) { return [...document.querySelectorAll(`#${groupId} input:checked`)].map(i=>i.value); }
+function getRadio(name) { return document.querySelector(`input[name="${name}"]:checked`)?.value || ''; }
+
+function checkMinor() {
+  const age = parseInt(getVal('ptAge'));
+  document.getElementById('minorRow').style.display = (age>0 && age<18) ? 'block' : 'none';
+}
+
+function toggleRC(name) {
+  const body = document.getElementById(`rcb-${name}`);
+  const chev = document.getElementById(`chev-${name}`);
+  const open = body.classList.toggle('open');
+  chev.style.transform = open ? 'rotate(180deg)' : '';
+}
+
+function toggleWoundFields(type) {
+  document.getElementById('woundActiveFields').classList.toggle('active', type==='wound');
+  document.getElementById('woundScarFields').classList.toggle('active', type==='scar');
+}
+
+function updateOrthosisTypeDocs() {
+  const type = getRadio('orthosisType');
+  document.getElementById('orthosisModRow').style.display = type==='custom-fitted' ? 'block' : 'none';
+  document.getElementById('prefabJustRow').style.display = type==='custom-fabricated' ? 'block' : 'none';
+}
+
+function toggleOutcome(name, checked) {
+  const el = document.getElementById(`${name}Score`);
+  if (el) el.style.display = checked ? 'flex' : 'none';
+  autosave();
+}
+
+// ── Autosave ──────────────────────────────────────────────────
+let autosaveTimer;
+function autosave() {
+  clearTimeout(autosaveTimer);
+  autosaveTimer = setTimeout(() => {
+    Session.save('eval', collectFormData());
+    const el = document.getElementById('autosaveStatus');
+    if (el) el.textContent = 'Saved ' + new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  }, 800);
+}
+
+// ── Document upload ───────────────────────────────────────────
+async function handleDocUpload(files) {
+  if (!files?.length) return;
+  document.getElementById('docTypeRow').style.display = 'block';
+  const list = document.getElementById('uploadedFilesList');
+
+  for (const file of Array.from(files)) {
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const base64 = e.target.result.split(',')[1];
+      uploadedFiles.push({name:file.name, base64, mediaType:file.type});
+
+      const tag = document.createElement('div');
+      tag.style.cssText = 'padding:7px 12px;background:var(--navy-mid);border:1px solid var(--navy-border);border-radius:var(--radius);font-size:0.8rem;color:var(--white-dim);margin-bottom:6px;display:flex;align-items:center;gap:8px';
+      tag.innerHTML = `<span>📎</span><span>${file.name}</span><span style="color:var(--green-light);margin-left:auto">✓ Uploaded</span>`;
+      list.appendChild(tag);
+
+      await extractPrecautions(base64, file.type);
+    };
+    reader.readAsDataURL(file);
+  }
+}
+
+async function extractPrecautions(base64, mediaType) {
+  try {
+    const isImage = mediaType.startsWith('image/');
+    const contentItem = isImage
+      ? {type:'image', source:{type:'base64', media_type:mediaType, data:base64}}
+      : {type:'document', source:{type:'base64', media_type:mediaType, data:base64}};
+
+    const res = await fetch('/api/chat', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        model:'claude-sonnet-4-20250514', max_tokens:1000,
+        system:'Extract precautions, contraindications, weight-bearing restrictions, and protocol restrictions from this document. Return ONLY a JSON array of strings. If none, return [].',
+        messages:[{role:'user', content:[contentItem,{type:'text',text:'Extract all precautions and contraindications.'}]}]
+      })
+    });
+    const data = await res.json();
+    const text = data.content?.[0]?.text?.trim() || '[]';
+    const precautions = JSON.parse(text.replace(/```json|```/g,'').trim());
+    if (precautions.length) showPrecautionBanner(precautions);
+  } catch(e) { console.warn('Precaution extraction failed', e); }
+}
+
+function showPrecautionBanner(items) {
+  const banner = document.getElementById('precautionBanner');
+  const list = document.getElementById('precautionList');
+  banner.style.display = 'flex';
+  items.forEach(p => { const li=document.createElement('li'); li.textContent=p; list.appendChild(li); });
+}
+
+// ── Special Tests ─────────────────────────────────────────────
+let stCount = 0;
+function addSpecialTest() {
+  const id = ++stCount;
+  const container = document.getElementById('specialTestsList');
+  const div = document.createElement('div');
+  div.id = `st-${id}`;
+  div.style.cssText = 'display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-bottom:10px;align-items:end';
+  div.innerHTML = `
+    <div class="form-group mb-0">
+      <label class="form-label">Region</label>
+      <select class="form-select" id="st-region-${id}" onchange="updateSTOptions(${id})" style="font-size:0.85rem">
+        <option value="">Select region…</option>
+        ${Object.keys(SPECIAL_TESTS).map(r=>`<option>${r}</option>`).join('')}
+      </select>
+    </div>
+    <div class="form-group mb-0">
+      <label class="form-label">Test</label>
+      <select class="form-select" id="st-name-${id}" style="font-size:0.85rem"><option value="">Select test…</option></select>
+    </div>
+    <div class="flex gap-8" style="align-items:center;padding-bottom:1px">
+      <select class="form-select" id="st-result-${id}" style="width:130px;font-size:0.85rem">
+        <option value="">Result…</option><option value="positive">Positive</option><option value="negative">Negative</option><option value="equivocal">Equivocal</option>
+      </select>
+      <button class="btn btn--ghost btn--sm" onclick="document.getElementById('st-${id}').remove();autosave()" style="color:var(--slate-dim)">✕</button>
+    </div>`;
+  container.appendChild(div);
+  UI.initCheckItems(div);
+}
+
+function updateSTOptions(id) {
+  const region = document.getElementById(`st-region-${id}`)?.value;
+  const tests = SPECIAL_TESTS[region] || [];
+  const sel = document.getElementById(`st-name-${id}`);
+  sel.innerHTML = '<option value="">Select test…</option>' + tests.map(t=>`<option>${t}</option>`).join('');
+}
+
+// ── Interventions ─────────────────────────────────────────────
+function addIntervention() {
+  const id = ++intCount;
+  const list = document.getElementById('interventionList');
+  const nonEvalCodes = Object.keys(CPT_CODES).filter(c => !['97165','97166','97167','97168'].includes(c));
+
+  const cats = {
+    'Modalities': nonEvalCodes.filter(c=>CPT_CODES[c].category==='modality'),
+    'Therapeutic Procedures': nonEvalCodes.filter(c=>CPT_CODES[c].category==='tx'),
+    'Wound Care': nonEvalCodes.filter(c=>CPT_CODES[c].category==='wound'),
+    'Tests': nonEvalCodes.filter(c=>CPT_CODES[c].category==='test'),
+    'Orthotic/Prosthetic': nonEvalCodes.filter(c=>CPT_CODES[c].category==='ortho'),
+  };
+
+  const optGroups = Object.entries(cats).map(([cat,codes]) => {
+    if (!codes.length) return '';
+    return `<optgroup label="${cat}">${codes.map(c=>`<option value="${c}">${c} — ${CPT_CODES[c].title}</option>`).join('')}</optgroup>`;
+  }).join('');
+
+  const div = document.createElement('div');
+  div.className = 'int-card';
+  div.id = `int-${id}`;
+  div.innerHTML = `
+    <div class="int-card__top">
+      <select class="form-select" id="int-code-${id}" onchange="onCodeSelect(${id},this.value);autosave()" style="max-width:420px">
+        <option value="">Select CPT code…</option>${optGroups}
+      </select>
+      <button class="int-remove" onclick="removeInt(${id})" title="Remove">
+        <svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div id="int-detail-${id}"></div>`;
+  list.appendChild(div);
+}
+
+function onCodeSelect(id, code) {
+  const detail = document.getElementById(`int-detail-${id}`);
+  if (!code) { detail.innerHTML=''; updateBilling(); return; }
+  const info = CPT_CODES[code];
+  const woundWarning = info?.wound
+    ? `<div class="banner banner--danger mb-12"><span>⚠</span><span style="font-size:0.8rem"><strong>LCD L35125 applies</strong> — Complete full wound documentation in the Physical Assessment section above before billing this code.</span></div>`
+    : '';
+
+  const regionPills = BODY_REGIONS.map(r=>`<span class="region-pill" id="ip-${id}-${r.replace(/\//g,'-')}" onclick="this.classList.toggle('selected');autosave()">${r}</span>`).join('');
+
+  detail.innerHTML = `
+    ${woundWarning}
+    <button class="btn btn--ghost btn--sm mb-12" onclick="toggleIntDef(${id})" style="font-size:0.75rem;color:var(--teal-light)">ℹ View code definition, examples &amp; audit flags</button>
+    <div id="int-def-${id}" style="display:none;margin-bottom:14px;background:var(--navy-mid);border:1px solid var(--navy-border);border-radius:var(--radius);padding:16px">${buildCPTExpansion(code)}</div>
+    <div class="grid-2 mb-12">
+      <div class="form-group mb-0"><label class="form-label">Body Region(s)</label><div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px" id="int-regions-${id}">${regionPills}</div></div>
+      <div>
+        <div class="form-group mb-8"><label class="form-label">Duration (min)</label><input type="number" class="form-input" id="int-min-${id}" min="0" max="240" placeholder="0" oninput="autosave();updateBilling()"></div>
+        <div class="form-group mb-0"><label class="form-label">Units billed</label><input type="number" class="form-input" id="int-units-${id}" min="0" max="16" placeholder="0" oninput="autosave()"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Interventions Performed</label><textarea class="form-textarea" id="int-desc-${id}" rows="2" placeholder="Specific techniques, exercises, activities, and parameters…" oninput="autosave()"></textarea></div>
+    <div class="form-group mb-0"><label class="form-label">Patient Response</label>
+      <div class="check-group mb-8" id="int-resp-group-${id}">
+        <label class="check-item"><input type="radio" name="resp-${id}" value="Patient tolerated intervention well with no adverse response."><span class="check-box"></span>Tolerated well</label>
+        <label class="check-item"><input type="radio" name="resp-${id}" value="Patient reported temporary increase in pain during intervention; intensity was reduced accordingly."><span class="check-box"></span>Temporary pain increase</label>
+        <label class="check-item"><input type="radio" name="resp-${id}" value="Patient required moderate cueing for correct technique throughout."><span class="check-box"></span>Required cueing</label>
+        <label class="check-item"><input type="radio" name="resp-${id}" value="Patient demonstrated good carryover and required minimal cues."><span class="check-box"></span>Good carryover</label>
+        <label class="check-item"><input type="radio" name="resp-${id}" value="Patient fatigued before completion; duration was reduced accordingly."><span class="check-box"></span>Fatigued</label>
+      </div>
+      <textarea class="form-textarea" id="int-resp-text-${id}" rows="1" style="min-height:36px" placeholder="Additional response notes…" oninput="autosave()"></textarea>
+    </div>`;
+  UI.initCheckItems(detail);
+  updateBilling();
+}
+
+function toggleIntDef(id) {
+  const el = document.getElementById(`int-def-${id}`);
+  el.style.display = el.style.display==='none' ? 'block' : 'none';
+}
+
+function removeInt(id) {
+  document.getElementById(`int-${id}`)?.remove();
+  updateBilling(); autosave();
+}
+
+// ── Goals ─────────────────────────────────────────────────────
+function addGoal(type) {
+  const id = ++goalCount;
+  const evalDate = getVal('evalDate');
+  const timelineOpts = [2,4,6,8,12].map(w => {
+    const label = evalDate ? ` (by ${NoteBuilder.formatDate(NoteBuilder.targetDate(evalDate,w))})` : '';
+    return `<option value="${w}">${w} weeks${label}</option>`;
+  }).join('') + '<option value="custom">Custom date</option>';
+
+  const div = document.createElement('div');
+  div.className = `goal-card ${type==='LTG'?'goal-card--ltg':''}`;
+  div.id = `goal-${id}`;
+  div.innerHTML = `
+    <div class="goal-card__top">
+      <span class="goal-tag goal-tag--${type.toLowerCase()}">${type}</span>
+      <span style="font-size:0.8rem;color:var(--slate)">Goal ${id}</span>
+      <select class="form-select" id="goal-tl-${id}" style="width:200px;font-size:0.82rem;margin-left:auto" onchange="onGoalTimelineChange(${id});autosave()">${timelineOpts}</select>
+      <input type="date" id="goal-custom-${id}" class="form-input" style="display:none;width:160px" oninput="autosave()">
+      <button class="btn btn--ghost btn--sm" onclick="document.getElementById('goal-${id}').remove();autosave()" style="color:var(--slate-dim)">✕</button>
+    </div>
+    <div class="form-group mb-4">
+      <textarea class="form-textarea" id="goal-text-${id}" rows="2" placeholder="Condition + Behavior + Criterion + Timeline&#10;e.g. Patient will demonstrate active shoulder flexion to 150 degrees with no more than 3/10 pain to allow overhead reaching by [target date]." oninput="autosave()"></textarea>
+    </div>
+    <div id="goal-date-${id}" style="font-size:0.75rem;color:var(--slate-dim);font-family:var(--font-mono)"></div>`;
+  document.getElementById('goalsList').appendChild(div);
+  onGoalTimelineChange(id);
+}
+
+function onGoalTimelineChange(id) {
+  const tl = getVal(`goal-tl-${id}`);
+  const customInput = document.getElementById(`goal-custom-${id}`);
+  const display = document.getElementById(`goal-date-${id}`);
+  customInput.style.display = tl==='custom' ? 'block' : 'none';
+  if (tl!=='custom') {
+    const evalDate = getVal('evalDate');
+    if (evalDate && tl) display.textContent = `Target assessment date: ${NoteBuilder.formatDate(NoteBuilder.targetDate(evalDate,tl))}`;
+  } else { display.textContent = ''; }
+}
+
+function refreshGoalDates() {
+  document.querySelectorAll('[id^="goal-tl-"]').forEach(sel => {
+    const id = sel.id.replace('goal-tl-','');
+    onGoalTimelineChange(id);
+  });
+}
+
+// ── Billing ───────────────────────────────────────────────────
+function updateBilling() {
+  const container = document.getElementById('billingList');
+  const complexity = getRadio('evalComplexity');
+  const ints = [];
+  document.querySelectorAll('.int-card').forEach(card => {
+    const id = card.id.replace('int-','');
+    const code = getVal(`int-code-${id}`);
+    if (code) ints.push({ code, title: CPT_CODES[code]?.title||'', min: getVal(`int-min-${id}`), units: getVal(`int-units-${id}`) });
+  });
+
+  if (!complexity && !ints.length) {
+    container.innerHTML = '<p style="color:var(--slate);font-size:0.85rem">Select evaluation complexity and add CPT codes above.</p>';
+    return;
+  }
+
+  let html = '';
+  if (complexity) {
+    const code = complexity.split(' ')[0];
+    html += buildBillingRow(code, CPT_CODES[code]?.title || complexity, '', '', true);
+  }
+  ints.forEach(i => { html += buildBillingRow(i.code, i.title, i.min, i.units, false); });
+  container.innerHTML = html;
+}
+
+function buildBillingRow(code, title, min, units, isEval) {
+  const info = CPT_CODES[code] || {};
+  const woundBadge = info.wound ? `<span class="section-badge" style="font-size:0.65rem;background:rgba(192,73,90,0.15);color:#D46070;border-color:rgba(192,73,90,0.3)">LCD</span>` : '';
+  return `
+  <div class="cpt-row" style="${isEval?'border-left:3px solid var(--teal)':''}">
+    <div class="cpt-row__header" style="cursor:default">
+      <span class="cpt-code">${code}</span>
+      <span class="cpt-title">${title} ${woundBadge}</span>
+      <span style="font-size:0.78rem;color:var(--slate-dim)">${min?min+' min':''}${units?' · '+units+' unit(s)':''} ${info.unit?'('+info.unit+')':''}</span>
+      <button class="cpt-expand-btn" onclick="toggleBillingExp('${code}',this)">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" style="transition:transform 0.2s"><path d="M2 4.5L7 9.5L12 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="cpt-row__expansion" id="bexp-${code}" style="display:none">${buildCPTExpansion(code)}</div>
+  </div>`;
+}
+
+function toggleBillingExp(code, btn) {
+  const el = document.getElementById(`bexp-${code}`);
+  const open = el.style.display==='none';
+  el.style.display = open ? 'block' : 'none';
+  btn.querySelector('svg').style.transform = open ? 'rotate(180deg)' : '';
+}
+
+// ── Collect form data ─────────────────────────────────────────
+function collectFormData() {
+  const goals = [];
+  document.querySelectorAll('[id^="goal-"]').forEach(el => {
+    const id = el.id.replace('goal-','');
+    if (!/^\d+$/.test(id)) return;
+    const type = el.classList.contains('goal-card--ltg') ? 'LTG' : 'STG';
+    const tl = getVal(`goal-tl-${id}`);
+    const evalDate = getVal('evalDate');
+    const targetDate = tl==='custom' ? getVal(`goal-custom-${id}`) : (evalDate && tl ? NoteBuilder.targetDate(evalDate,tl) : '');
+    goals.push({ id, type, text:getVal(`goal-text-${id}`), timeline:tl==='custom'?'custom':`${tl} weeks`, targetDate });
+  });
+  goals.sort((a,b) => (a.targetDate||'9') < (b.targetDate||'9') ? -1 : 1);
+
+  const interventions = [];
+  document.querySelectorAll('.int-card').forEach(card => {
+    const id = card.id.replace('int-','');
+    const code = getVal(`int-code-${id}`);
+    if (!code) return;
+    const regions = [...document.querySelectorAll(`#int-regions-${id} .region-pill.selected`)].map(p=>p.textContent);
+    interventions.push({ code, title:CPT_CODES[code]?.title||'', regions, minutes:getVal(`int-min-${id}`), units:getVal(`int-units-${id}`), description:getVal(`int-desc-${id}`), response:getRadio(`resp-${id}`) || getVal(`int-resp-text-${id}`) });
+  });
+
+  const specialTests = [];
+  document.querySelectorAll('[id^="st-"]').forEach(row => {
+    const id = row.id.replace('st-','');
+    if (!/^\d+$/.test(id)) return;
+    const region = getVal(`st-region-${id}`), name = getVal(`st-name-${id}`), result = getVal(`st-result-${id}`);
+    if (name && result) specialTests.push({ region, name, result });
+  });
+
+  return {
+    patient: { firstName:getVal('ptFirst'), lastName:getVal('ptLast'), age:getVal('ptAge'), gender:getVal('ptGender'), companion:getVal('companion'), interpreterRequired:document.getElementById('interpreterChk')?.checked },
+    referral: { provider:getVal('refProvider'), npi:getVal('refNPI'), reason:getVal('refReason'), evalDate:getVal('evalDate'), injuryDate:getVal('injuryDate'), surgeryDate:getVal('surgeryDate') },
+    subjective: {
+      mechanism:getChecked('mecGroup'), duration:getRadio('duration'), dominantHand:getRadio('domHand'), workStatus:getRadio('work'), priorTreatment:getChecked('priorTxGroup'), functionalLimitations:getChecked('funcLimitGroup'),
+      roles:getChecked('rolesGroup'), patientGoals:getVal('ptGoals'), homeEnvironment:getChecked('homeEnvGroup'), supportNotes:getVal('supportNotes'),
+      pain: { current:document.getElementById('painCurrent')?.value, best:document.getElementById('painBest')?.value, worst:document.getElementById('painWorst')?.value, descriptors:getChecked('painDescGroup'), aggravating:[...getChecked('aggravGroup'),getVal('aggravText')].filter(Boolean), relieving:[...getChecked('relieveGroup'),getVal('relieveText')].filter(Boolean) }
+    },
+    objective: {
+      outcomeMeasures: { uefi:document.getElementById('uefiChk')?.checked?getVal('uefiVal'):null, prwe:document.getElementById('prweChk')?.checked?getVal('prweVal'):null, qdash:document.getElementById('qdashChk')?.checked?getVal('qdashVal'):null },
+      rom: { findings:getVal('romFindings') },
+      strength: { gripAffected:getVal('gripAffected'), gripContralateral:getVal('gripContralateral'), pinch:getVal('pinchStr'), mmt:getVal('mmtFindings') },
+      specialTests,
+      neuro: { sensation:getVal('sensation'), nerveTension:getVal('nerveTension') },
+      palpation:getVal('palpation'),
+      edema: { severity:getRadio('edema'), character:getRadio('edemaPit'), measurements:getVal('edemaMeasure') },
+      posture:[...getChecked('postureGroup'),getVal('postureNotes')].filter(Boolean),
+      fmc:getVal('fmcFindings'),
+      wound: { type:getRadio('woundType'), location:getVal('woundLoc'), woundType:getVal('woundWoundType'), L:getVal('woundL'), W:getVal('woundW'), D:getVal('woundD'), tissue:getChecked('woundTissueGroup'), drainage:getRadio('wdrainage'), drainageVolume:getRadio('wvolume'), infection:getRadio('winfect'), infectionDesc:getVal('wInfectDesc'), periwound:getChecked('periwoundGroup'), tunneling:getRadio('tunneling'), tunnelingDesc:getVal('tunnelingDesc'), scarDescription:getVal('scarDescription') },
+      education:[...getChecked('educationGroup'),getVal('educationNotes')].filter(Boolean),
+      equipment: { orthotics:getChecked('orthoticsGroup'), orthosisType:getRadio('orthosisType'), orthosisModifications:getVal('orthosisModifications'), prefabJustification:getVal('prefabJustification'), priorDevices:getVal('priorDevices'), compression:getChecked('compressionGroup'), adaptive:getChecked('adaptiveGroup'), dme:getChecked('dmeGroup'), other:getVal('equipmentOther') },
+      interventions
+    },
+    assessment: { complexity:getRadio('evalComplexity'), narrative:getVal('assessmentNarrative'), goals },
+    plan: { frequency:getVal('freqSelect')==='Custom (see below)'?getVal('freqCustom'):getVal('freqSelect'), authNote:getVal('authNote'), plannedCPT:getChecked('plannedCPTGroup') },
+    meta: { clinician:Session.getClinicianName(), visitNumber:Session.getVisitCount() }
+  };
+}
+
+// ── Generate Note ─────────────────────────────────────────────
+async function generateNote() {
+  const btns = ['generateBtn','generateBtn2','generateBtn3'];
+  btns.forEach(id => { const b=document.getElementById(id); if(b) UI.setLoading(b,true); });
+
+  try {
+    const data = collectFormData();
+    Session.save('eval', data);
+
+    const statusPost = data.referral.surgeryDate
+      ? `Patient is ${NoteBuilder.statusPost(data.referral.surgeryDate)} post-operative.`
+      : data.referral.injuryDate
+      ? `Patient is ${NoteBuilder.statusPost(data.referral.injuryDate)} post-injury.`
+      : '';
+
+    const progressNote = data.meta.visitNumber>1 && data.meta.visitNumber%10===0
+      ? 'IMPORTANT: This is visit ' + data.meta.visitNumber + '. Medicare requires a formal progress report. Include goal-by-goal progress with measurable data.'
+      : '';
+
+    const userMsg = `Generate a complete Medicare-compliant OT evaluation SOAP note for the IHS EHR. ${statusPost} ${progressNote}
+
+PATIENT: ${data.patient.firstName} ${data.patient.lastName}, ${data.patient.age}-year-old ${data.patient.gender}
+${data.patient.interpreterRequired ? 'Interpreter was required and present for this visit.' : ''}
+REFERRAL: ${data.referral.reason}
+EVALUATION DATE: ${NoteBuilder.formatDate(data.referral.evalDate)}
+EVALUATION COMPLEXITY: ${data.assessment.complexity}
+CLINICIAN: ${data.meta.clinician || '[Clinician name and credentials]'}
+
+FULL DATA:
+${JSON.stringify(data, null, 2)}`;
+
+    const result = await AI.call([{role:'user',content:userMsg}], NOTE_SYSTEM_PROMPTS.eval);
+    currentNote = result;
+    chatHistory = [];
+    NoteBuilder.renderPreview(result, document.getElementById('notePreview'));
+    document.getElementById('sec-preview').scrollIntoView({behavior:'smooth',block:'start'});
+    UI.toast('Note generated successfully', 'success');
+
+  } catch(e) {
+    console.error(e);
+    UI.toast('Generation failed — check API connection', 'danger');
+  } finally {
+    btns.forEach(id => { const b=document.getElementById(id); if(b) UI.setLoading(b,false); });
+  }
+}
+
+// ── Chat ──────────────────────────────────────────────────────
+async function sendChat() {
+  const input = document.getElementById('chatInput');
+  const msg = input.value.trim();
+  if (!msg || !currentNote) { if (!currentNote) UI.toast('Generate a note first','warning'); return; }
+
+  appendChatMsg(msg, 'user');
+  input.value = '';
+  UI.setLoading(document.getElementById('chatSendBtn'), true);
+
+  try {
+    chatHistory.push({role:'user', content:`Current note:\n\n${currentNote}\n\n---\nRequest: ${msg}`});
+    const result = await AI.call(chatHistory, NOTE_SYSTEM_PROMPTS.refine);
+    chatHistory.push({role:'assistant', content:result});
+    currentNote = result;
+    NoteBuilder.renderPreview(result, document.getElementById('notePreview'));
+    appendChatMsg(result.substring(0,120)+'… (note updated above)', 'ai');
+  } catch(e) {
+    UI.toast('Chat failed — check API connection','danger');
+  } finally {
+    UI.setLoading(document.getElementById('chatSendBtn'), false);
+  }
+}
+
+function sendChip(el) { document.getElementById('chatInput').value = el.textContent; sendChat(); }
+
+function appendChatMsg(text, role) {
+  const container = document.getElementById('chatMessages');
+  const div = document.createElement('div');
+  div.className = `chat-msg chat-msg--${role}`;
+  div.textContent = text;
+  container.appendChild(div);
+  container.scrollTop = container.scrollHeight;
+}
+
+// ── Copy ──────────────────────────────────────────────────────
+async function copySection(section) {
+  if (!currentNote) { UI.toast('Generate a note first','warning'); return; }
+  let text = currentNote;
+
+  if (section !== 'full') {
+    const sections = ['S:','O:','A:','P:','BILLING:'];
+    const startIdx = text.indexOf(`\n${section}:`);
+    if (startIdx === -1) { UI.toast(`Section ${section} not found`,'warning'); return; }
+    const nextSection = sections.find(s => s!==`${section}:` && text.indexOf(`\n${s}`, startIdx+1) > startIdx);
+    const endIdx = nextSection ? text.indexOf(`\n${nextSection}`, startIdx+1) : text.length;
+    text = text.substring(startIdx+1, endIdx > 0 ? endIdx : text.length).trim();
+  }
+
+  try {
+    await navigator.clipboard.writeText(text);
+    UI.toast(section==='full' ? 'Full note copied' : `${section} section copied`, 'success');
+  } catch(e) { UI.toast('Copy failed — use Ctrl+C on the preview','warning'); }
+}
+
+// ── Draft management ──────────────────────────────────────────
+function clearDraft() {
+  if (!confirm('Clear this note and start fresh?')) return;
+  Session.clear('eval');
+  window.location.reload();
+}
+
+function restoreDraft(data) {
+  try {
+    if (data.patient) {
+      if (data.patient.firstName) document.getElementById('ptFirst').value = data.patient.firstName;
+      if (data.patient.lastName)  document.getElementById('ptLast').value  = data.patient.lastName;
+      if (data.patient.age)       { document.getElementById('ptAge').value = data.patient.age; checkMinor(); }
+      if (data.patient.gender)    document.getElementById('ptGender').value = data.patient.gender;
+      if (data.patient.companion) document.getElementById('companion').value = data.patient.companion;
+    }
+    if (data.referral) {
+      if (data.referral.provider) document.getElementById('refProvider').value = data.referral.provider;
+      if (data.referral.reason)   document.getElementById('refReason').value   = data.referral.reason;
+      if (data.referral.evalDate) { document.getElementById('evalDate').value = data.referral.evalDate; document.getElementById('headerDate').textContent = NoteBuilder.formatDate(data.referral.evalDate); }
+      if (data.referral.injuryDate)  document.getElementById('injuryDate').value  = data.referral.injuryDate;
+      if (data.referral.surgeryDate) document.getElementById('surgeryDate').value = data.referral.surgeryDate;
+    }
+    if (data.subjective?.pain) {
+      const p = data.subjective.pain;
+      if (p.current !== undefined) { const s=document.getElementById('painCurrent'); s.value=p.current; document.getElementById('painCurrentVal').textContent=p.current; }
+      if (p.best !== undefined)    { const s=document.getElementById('painBest');    s.value=p.best;    document.getElementById('painBestVal').textContent=p.best; }
+      if (p.worst !== undefined)   { const s=document.getElementById('painWorst');   s.value=p.worst;   document.getElementById('painWorstVal').textContent=p.worst; }
+    }
+    if (data.assessment?.narrative) document.getElementById('assessmentNarrative').value = data.assessment.narrative;
+    if (data.plan?.authNote) document.getElementById('authNote').value = data.plan.authNote;
+    // Restore text areas
+    const textFields = { ptGoals:'ptGoals', supportNotes:'supportNotes', romFindings:'romFindings', mmtFindings:'mmtFindings', sensation:'sensation', nerveTension:'nerveTension', palpation:'palpation', edemaMeasure:'edemaMeasure', postureNotes:'postureNotes', fmcFindings:'fmcFindings', equipmentOther:'equipmentOther', educationNotes:'educationNotes' };
+    Object.entries(textFields).forEach(([field,id]) => { const path=field.split('.'); let val=data; path.forEach(p=>{val=val?.[p]}); if(val) document.getElementById(id).value=val; });
+
+    UI.toast('Draft restored', 'info');
+  } catch(e) { console.warn('Draft restore failed', e); }
+}
+</script>
+</body>
+</html>

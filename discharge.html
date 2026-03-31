@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Discharge Summary — OT Documentation</title>
+  <link rel="stylesheet" href="css/main.css">
+  <style>
+    .dc-main { max-width:860px; margin:0 auto; padding:32px 40px; }
+    @media(max-width:700px){.dc-main{padding:20px;}}
+    .dc-section { scroll-margin-top:80px; margin-bottom:40px; }
+    .goal-dc-card { background:var(--navy); border:1px solid var(--navy-border); border-radius:var(--radius); padding:14px 16px; margin-bottom:10px; }
+    .goal-dc-card__top { display:flex; align-items:flex-start; gap:12px; margin-bottom:12px; }
+    .goal-dc-card__text { flex:1; font-size:0.875rem; color:var(--white-dim); line-height:1.55; }
+    .int-card { background:var(--navy); border:1px solid var(--navy-border); border-radius:var(--radius); padding:16px; margin-bottom:10px; }
+    .int-remove { background:none; border:none; color:var(--slate-dim); cursor:pointer; padding:4px 6px; border-radius:var(--radius-sm); transition:var(--transition); margin-left:auto; }
+    .int-remove:hover { color:var(--red-light); background:rgba(192,73,90,0.1); }
+    .preview-panel { background:var(--navy-mid); border-top:1px solid var(--navy-border); padding:32px 40px; }
+    .preview-layout { display:grid; grid-template-columns:1fr 360px; gap:24px; max-width:1180px; }
+    @media(max-width:900px){.preview-layout{grid-template-columns:1fr}}
+    .generate-bar { position:sticky; bottom:0; background:var(--navy-mid); border-top:1px solid var(--navy-border); padding:12px 40px; display:flex; align-items:center; justify-content:space-between; z-index:50; }
+  </style>
+</head>
+<body>
+
+<header class="app-header">
+  <div class="app-header__logo">
+    <div class="app-header__logo-mark">OT</div>
+    <div>
+      <div class="app-header__title">Discharge Summary</div>
+      <div class="app-header__subtitle" id="headerDate"></div>
+    </div>
+  </div>
+  <div class="app-header__nav">
+    <a href="index.html" class="btn btn--ghost btn--sm">← Home</a>
+    <button class="btn btn--secondary btn--sm" onclick="clearDraft()">Clear</button>
+    <button class="btn btn--primary btn--sm" id="generateBtn" onclick="generateNote()">Generate Summary</button>
+  </div>
+</header>
+
+<main class="dc-main">
+
+  <!-- ── PULL-FORWARD ── -->
+  <section class="dc-section" id="sec-pullfwd">
+    <div class="section-header"><span class="section-title">Pull-Forward from Last Note</span><span class="section-badge">Optional but recommended</span></div>
+    <div class="banner banner--info mb-16"><span>ℹ</span><span style="font-size:0.85rem">Paste the most recent evaluation or follow-up note. AI will extract the episode data, goals, and interventions to pre-populate the discharge summary.</span></div>
+    <div class="form-group"><label class="form-label">Paste Prior Note</label><textarea class="form-textarea" id="priorNote" rows="5" style="font-size:0.82rem;font-family:var(--font-mono)" placeholder="Paste most recent note here…" oninput="autosave()"></textarea></div>
+    <button class="btn btn--secondary" id="extractBtn" onclick="extractFromPrior()">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.5"/><path d="M5 7l2 2 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+      Extract Data
+    </button>
+  </section>
+
+  <!-- ── EPISODE INFO ── -->
+  <section class="dc-section" id="sec-episode">
+    <div class="section-header"><span class="section-title">Episode of Care</span><span class="section-badge">Required</span></div>
+    <div class="grid-3">
+      <div class="form-group"><label class="form-label form-label--required">Patient First Name</label><input type="text" class="form-input" id="ptFirst" placeholder="First name" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label form-label--required">Patient Last Name</label><input type="text" class="form-input" id="ptLast" placeholder="Last name" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label form-label--required">Date of Discharge</label><input type="date" class="form-input" id="dischargeDate" oninput="autosave()"></div>
+    </div>
+    <div class="grid-3">
+      <div class="form-group"><label class="form-label">Date of Initial Evaluation</label><input type="date" class="form-input" id="evalDate" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label">Total Sessions Attended</label><input type="number" class="form-input" id="totalSessions" min="1" max="200" placeholder="e.g. 12" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label">Diagnosis</label><input type="text" class="form-input" id="diagnosis" placeholder="Primary diagnosis" oninput="autosave()"></div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Date of Injury</label><input type="date" class="form-input" id="injuryDate" oninput="autosave()"></div>
+      <div class="form-group"><label class="form-label">Date of Surgery (if applicable)</label><input type="date" class="form-input" id="surgeryDate" oninput="autosave()"></div>
+    </div>
+    <div class="form-group"><label class="form-label form-label--required">Reason for Discharge</label>
+      <div class="check-group mb-8" id="dischargeReasonGroup">
+        <label class="check-item"><input type="radio" name="dischargeReason" value="Patient achieved established goals and is independent with home exercise program."><span class="check-box"></span>Goals met</label>
+        <label class="check-item"><input type="radio" name="dischargeReason" value="Patient has reached a functional plateau despite appropriate skilled intervention."><span class="check-box"></span>Functional plateau</label>
+        <label class="check-item"><input type="radio" name="dischargeReason" value="Patient requested discontinuation of services."><span class="check-box"></span>Patient request</label>
+        <label class="check-item"><input type="radio" name="dischargeReason" value="Patient transferred to another provider or facility."><span class="check-box"></span>Transfer</label>
+        <label class="check-item"><input type="radio" name="dischargeReason" value="Authorized visits exhausted."><span class="check-box"></span>Visits exhausted</label>
+      </div>
+      <textarea class="form-textarea" id="dischargeReasonText" rows="1" style="min-height:36px" placeholder="Additional context…" oninput="autosave()"></textarea>
+    </div>
+  </section>
+
+  <!-- ── S: SUBJECTIVE ── -->
+  <section class="dc-section" id="sec-subj">
+    <div class="soap-label">S <span>Subjective</span></div>
+    <div class="form-group"><label class="form-label">Patient's Self-Report of Progress &amp; OT Efficacy</label><textarea class="form-textarea" id="patientReport" rows="4" placeholder="Patient's own account of progress, functional improvements, satisfaction with therapy, and goals for continued independence…" oninput="autosave()"></textarea></div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">Final Pain Level (NRS 0-10)</label><div class="nrs-wrap"><input type="range" min="0" max="10" value="0" id="finalPain" data-display="finalPainVal" oninput="autosave()"><span class="nrs-value" id="finalPainVal">0</span></div></div>
+      <div class="form-group"><label class="form-label">Pain at Initial Evaluation (for comparison)</label><div class="nrs-wrap"><input type="range" min="0" max="10" value="0" id="initialPain" data-display="initialPainVal" oninput="autosave()"><span class="nrs-value" id="initialPainVal">0</span></div></div>
+    </div>
+  </section>
+
+  <!-- ── O: OBJECTIVE ── -->
+  <section class="dc-section" id="sec-obj">
+    <div class="soap-label">O <span>Objective</span></div>
+    <div class="section-header"><span class="section-title">Final Outcome Measure Scores</span></div>
+    <p style="font-size:0.8rem;color:var(--slate-dim);margin-bottom:14px">Enter final scores. Provide initial (baseline) scores for delta calculation in the final note.</p>
+    <div style="background:var(--navy);border:1px solid var(--navy-border);border-radius:var(--radius);padding:16px;margin-bottom:12px">
+      <div class="grid-3">
+        <div class="form-group mb-0"><label class="form-label">UEFI — Final</label><input type="number" class="form-input" id="uefiVal" min="0" max="80" placeholder="/80" oninput="autosave()"></div>
+        <div class="form-group mb-0"><label class="form-label">UEFI — Baseline</label><input type="number" class="form-input" id="uefiBaseline" min="0" max="80" placeholder="Initial score" oninput="autosave()"></div>
+        <div class="form-group mb-0"><label class="form-label">PRWE — Final</label><input type="number" class="form-input" id="prweVal" min="0" max="100" placeholder="/100" oninput="autosave()"></div>
+      </div>
+      <div class="grid-3 mt-12">
+        <div class="form-group mb-0"><label class="form-label">PRWE — Baseline</label><input type="number" class="form-input" id="prweBaseline" min="0" max="100" placeholder="Initial score" oninput="autosave()"></div>
+        <div class="form-group mb-0"><label class="form-label">QuickDASH — Final</label><input type="number" class="form-input" id="qdashVal" min="0" max="100" placeholder="/100" oninput="autosave()"></div>
+        <div class="form-group mb-0"><label class="form-label">QuickDASH — Baseline</label><input type="number" class="form-input" id="qdashBaseline" min="0" max="100" placeholder="Initial score" oninput="autosave()"></div>
+      </div>
+    </div>
+    <div class="form-group"><label class="form-label">Final Objective Findings Summary</label><textarea class="form-textarea" id="finalObjective" rows="4" placeholder="Summary of final ROM, strength, and functional findings compared to initial evaluation. Include key measurements that demonstrate progress or plateau." oninput="autosave()"></textarea></div>
+  </section>
+
+  <!-- ── A: ASSESSMENT / GOALS ── -->
+  <section class="dc-section" id="sec-goals">
+    <div class="soap-label">A <span>Assessment</span></div>
+    <div class="section-header"><span class="section-title">Goal Outcomes</span><button class="btn btn--secondary btn--sm" onclick="addGoalCard()">+ Add goal</button></div>
+    <p style="font-size:0.8rem;color:var(--slate-dim);margin-bottom:14px">Document initial status and ending status for each goal per AOTA discharge documentation guidelines.</p>
+    <div id="goalOutcomesList"></div>
+    <div class="form-group mt-16"><label class="form-label">Summary of Interventions Provided Throughout Episode</label><textarea class="form-textarea" id="interventionSummary" rows="3" placeholder="Brief summary of primary interventions used throughout the episode of care…" oninput="autosave()"></textarea></div>
+    <div class="form-group"><label class="form-label">Assessment Narrative</label><textarea class="form-textarea" id="assessmentNarrative" rows="4" placeholder="AI will generate this from your entries. Should include: overall progress, functional outcomes, patient response to OT, and discharge prognosis." oninput="autosave()"></textarea></div>
+  </section>
+
+  <!-- ── P: PLAN ── -->
+  <section class="dc-section" id="sec-plan">
+    <div class="soap-label">P <span>Plan</span></div>
+    <div class="section-header"><span class="section-title">Discharge Plan</span></div>
+    <div class="form-group"><label class="form-label">Discharge Disposition</label>
+      <div class="check-group" id="dispositionGroup">
+        <label class="check-item"><input type="radio" name="disposition" value="Patient discharged to independent home exercise program."><span class="check-box"></span>Independent HEP</label>
+        <label class="check-item"><input type="radio" name="disposition" value="Patient discharged with return-to-clinic instructions if symptoms recur."><span class="check-box"></span>Return PRN</label>
+        <label class="check-item"><input type="radio" name="disposition" value="Patient referred to another OT provider for continuation of care."><span class="check-box"></span>Referred to OT</label>
+        <label class="check-item"><input type="radio" name="disposition" value="Patient discharged to home with caregiver-assisted program."><span class="check-box"></span>Caregiver-assisted</label>
+      </div>
+    </div>
+    <div class="grid-2">
+      <div class="form-group"><label class="form-label">HEP Provided at Discharge</label>
+        <div class="check-group">
+          <label class="check-item"><input type="radio" name="hep" value="Written HEP provided at discharge."><span class="check-box"></span>Written HEP provided</label>
+          <label class="check-item"><input type="radio" name="hep" value="No written HEP provided — patient declined."><span class="check-box"></span>Patient declined</label>
+          <label class="check-item"><input type="radio" name="hep" value="HEP updated and provided at discharge."><span class="check-box"></span>HEP updated</label>
+        </div>
+      </div>
+      <div class="form-group"><label class="form-label">Follow-Up Recommendations</label><textarea class="form-textarea" id="followUpRec" rows="2" placeholder="Any follow-up recommendations, referrals, or conditions for return to OT…" style="min-height:60px" oninput="autosave()"></textarea></div>
+    </div>
+    <div class="form-group"><label class="form-label">Additional Recommendations / Referrals</label><textarea class="form-textarea" id="additionalRec" rows="2" placeholder="Referrals to other providers, community resources, or additional recommendations…" oninput="autosave()"></textarea></div>
+  </section>
+
+  <!-- ── BILLING ── -->
+  <section class="dc-section" id="sec-billing">
+    <div class="section-header"><span class="section-title">Final Session Billing</span><button class="btn btn--secondary btn--sm" onclick="addBillingCode()">+ Add CPT Code</button></div>
+    <div id="billingList"></div>
+  </section>
+
+  <div style="height:80px"></div>
+</main>
+
+<!-- ── PREVIEW ── -->
+<div class="preview-panel" id="sec-preview">
+  <div style="max-width:1180px;margin:0 auto">
+    <div class="section-header mb-24">
+      <h2 style="font-family:var(--font-display);font-size:1.3rem">Discharge Summary Preview &amp; AI</h2>
+      <button class="btn btn--primary" id="generateBtn2" onclick="generateNote()">✦ Generate Summary</button>
+    </div>
+    <div class="preview-layout">
+      <div>
+        <div class="copy-bar">
+          <button class="btn btn--secondary btn--sm" onclick="copySection('full')">📋 Copy full note</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('S')">S only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('O')">O only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('A')">A only</button>
+          <button class="btn btn--ghost btn--sm" onclick="copySection('P')">P only</button>
+          <button class="btn btn--ghost btn--sm" onclick="window.print()">🖨 Print</button>
+        </div>
+        <div class="note-preview" id="notePreview"><span style="color:var(--slate-dim);font-size:0.85rem">Complete the form above and click Generate Summary.</span></div>
+      </div>
+      <div>
+        <div class="chat-panel">
+          <div class="chat-panel__header"><div class="chat-panel__dot"></div><span class="chat-panel__title">AI Refinement</span></div>
+          <div class="chat-panel__messages" id="chatMessages">
+            <div class="chat-msg chat-msg--ai">Generate the discharge summary first, then ask me to refine any section.</div>
+          </div>
+          <div class="chat-panel__chips">
+            <span class="chat-chip" onclick="sendChip(this)">Strengthen functional outcomes</span>
+            <span class="chat-chip" onclick="sendChip(this)">Shorten the assessment</span>
+            <span class="chat-chip" onclick="sendChip(this)">Clarify discharge rationale</span>
+            <span class="chat-chip" onclick="sendChip(this)">Simplify language</span>
+          </div>
+          <div class="chat-panel__input-row">
+            <input type="text" class="chat-panel__input" id="chatInput" placeholder="Ask to refine…" onkeydown="if(event.key==='Enter')sendChat()">
+            <button class="btn btn--primary btn--sm" id="chatSendBtn" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="generate-bar no-print">
+  <span style="font-size:0.8rem;color:var(--slate)" id="autosaveStatus">Auto-saves as you type</span>
+  <div class="flex gap-8">
+    <button class="btn btn--secondary btn--sm" onclick="document.getElementById('sec-preview').scrollIntoView({behavior:'smooth'})">Jump to preview</button>
+    <button class="btn btn--primary" id="generateBtn3" onclick="generateNote()">✦ Generate Summary</button>
+  </div>
+</div>
+
+<script src="js/shared.js"></script>
+<script>
+let goalCount=0, billingCount=0, currentNote='', chatHistory=[];
+
+document.addEventListener('DOMContentLoaded',()=>{
+  const today=new Date().toISOString().split('T')[0];
+  document.getElementById('dischargeDate').value=today;
+  document.getElementById('headerDate').textContent=NoteBuilder.formatDate(today);
+  UI.initCheckItems(document.body); UI.initSliders(document.body); UI.initToggles(document.body);
+  const draft=Session.load('discharge'); if(draft) restoreDraft(draft);
+});
+
+function getVal(id){return document.getElementById(id)?.value||'';}
+function getRadio(name){return document.querySelector(`input[name="${name}"]:checked`)?.value||'';}
+function getChecked(gid){return[...document.querySelectorAll(`#${gid} input:checked`)].map(i=>i.value);}
+
+let autosaveTimer;
+function autosave(){clearTimeout(autosaveTimer);autosaveTimer=setTimeout(()=>{Session.save('discharge',collectFormData());const el=document.getElementById('autosaveStatus');if(el)el.textContent='Saved '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});},800);}
+
+async function extractFromPrior(){
+  const text=getVal('priorNote'); if(!text.trim()){UI.toast('Paste a prior note first','warning');return;}
+  UI.setLoading(document.getElementById('extractBtn'),true);
+  try{
+    const result=await AI.extractFromNote(text);
+    if(!result){UI.toast('Could not parse — enter data manually','warning');return;}
+    if(result.injuryDate) document.getElementById('injuryDate').value=result.injuryDate;
+    if(result.surgeryDate) document.getElementById('surgeryDate').value=result.surgeryDate;
+    if(result.diagnosis) document.getElementById('diagnosis').value=result.diagnosis;
+    if(result.goals?.length){
+      const list=document.getElementById('goalOutcomesList'); list.innerHTML='';
+      result.goals.forEach(g=>addGoalCard(g));
+    }
+    UI.toast('Data extracted','success');
+  }catch(e){UI.toast('Extraction failed','danger');}
+  finally{UI.setLoading(document.getElementById('extractBtn'),false);}
+}
+
+function addGoalCard(goal={}) {
+  const id=++goalCount;
+  const list=document.getElementById('goalOutcomesList');
+  const div=document.createElement('div'); div.className='goal-dc-card'; div.id=`gdc-${id}`;
+  div.innerHTML=`
+    <div class="goal-dc-card__top">
+      <span class="goal-tag goal-tag--${(goal.type||'STG').toLowerCase()}">${goal.type||'STG'}</span>
+      <textarea class="form-textarea goal-dc-card__text" id="goal-text-${id}" rows="2" placeholder="Goal text…" style="background:transparent;border-color:transparent;padding:0" oninput="autosave()">${goal.text||''}</textarea>
+      <button class="btn btn--ghost btn--sm" onclick="document.getElementById('gdc-${id}').remove();autosave()" style="color:var(--slate-dim);flex-shrink:0">✕</button>
+    </div>
+    <div class="grid-2">
+      <div class="form-group mb-0">
+        <label class="form-label">Goal Status</label>
+        <div class="check-group" id="gdc-status-${id}">
+          <label class="check-item"><input type="radio" name="gstatus-${id}" value="Met"><span class="check-box"></span>Met</label>
+          <label class="check-item"><input type="radio" name="gstatus-${id}" value="Partially met"><span class="check-box"></span>Partially met</label>
+          <label class="check-item"><input type="radio" name="gstatus-${id}" value="Not met"><span class="check-box"></span>Not met</label>
+          <label class="check-item"><input type="radio" name="gstatus-${id}" value="Discontinued"><span class="check-box"></span>Discontinued</label>
+        </div>
+      </div>
+      <div class="form-group mb-0">
+        <label class="form-label">Initial vs. Ending Status</label>
+        <textarea class="form-textarea" id="goal-delta-${id}" rows="2" placeholder="e.g. Shoulder AROM: initial 90°, final 155°…" style="min-height:56px" oninput="autosave()"></textarea>
+      </div>
+    </div>`;
+  list.appendChild(div); UI.initCheckItems(div);
+}
+
+function addBillingCode(){
+  const id=++billingCount;
+  const list=document.getElementById('billingList');
+  const nonEvalCodes=Object.keys(CPT_CODES).filter(c=>!['97165','97166','97167','97168'].includes(c));
+  const optGroups=(() => {
+    const cats={'Therapeutic Procedures':['97110','97530','97140','97112','97124','97535'],'Modalities':['97010','97018','97035'],'Wound Care':['97597','97602'],'Orthotic/Prosthetic':['97760','97763']};
+    return Object.entries(cats).map(([cat,codes])=>`<optgroup label="${cat}">${codes.map(c=>`<option value="${c}">${c} — ${CPT_CODES[c]?.title||c}</option>`).join('')}</optgroup>`).join('');
+  })();
+  const div=document.createElement('div'); div.className='int-card'; div.id=`bill-${id}`;
+  div.innerHTML=`
+    <div style="display:flex;align-items:center;gap:12px">
+      <select class="form-select" id="bill-code-${id}" style="max-width:360px" oninput="autosave()"><option value="">Select CPT…</option>${optGroups}</select>
+      <input type="number" class="form-input" id="bill-min-${id}" min="0" max="240" placeholder="Min" style="width:80px" oninput="autosave()">
+      <input type="number" class="form-input" id="bill-units-${id}" min="0" max="16" placeholder="Units" style="width:80px" oninput="autosave()">
+      <button class="int-remove" onclick="document.getElementById('bill-${id}').remove();autosave()"><svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg></button>
+    </div>`;
+  list.appendChild(div);
+}
+
+function collectFormData(){
+  const goals=[];
+  document.querySelectorAll('[id^="gdc-"]').forEach(card=>{
+    const id=card.id.replace('gdc-','');
+    goals.push({text:getVal(`goal-text-${id}`),status:document.querySelector(`input[name="gstatus-${id}"]:checked`)?.value||'',delta:getVal(`goal-delta-${id}`)});
+  });
+  const billing=[];
+  document.querySelectorAll('[id^="bill-"]').forEach(card=>{
+    const id=card.id.replace('bill-',''); const code=getVal(`bill-code-${id}`);
+    if(code) billing.push({code,title:CPT_CODES[code]?.title||'',minutes:getVal(`bill-min-${id}`),units:getVal(`bill-units-${id}`)});
+  });
+  return {
+    patient:{firstName:getVal('ptFirst'),lastName:getVal('ptLast'),diagnosis:getVal('diagnosis')},
+    episode:{evalDate:getVal('evalDate'),dischargeDate:getVal('dischargeDate'),totalSessions:getVal('totalSessions'),injuryDate:getVal('injuryDate'),surgeryDate:getVal('surgeryDate'),dischargeReason:getRadio('dischargeReason')||getVal('dischargeReasonText')},
+    subjective:{patientReport:getVal('patientReport'),finalPain:document.getElementById('finalPain')?.value,initialPain:document.getElementById('initialPain')?.value},
+    objective:{outcomeMeasures:{uefi:{final:getVal('uefiVal'),baseline:getVal('uefiBaseline')},prwe:{final:getVal('prweVal'),baseline:getVal('prweBaseline')},qdash:{final:getVal('qdashVal'),baseline:getVal('qdashBaseline')}},finalFindings:getVal('finalObjective')},
+    assessment:{goals,interventionSummary:getVal('interventionSummary'),narrative:getVal('assessmentNarrative')},
+    plan:{disposition:getRadio('disposition'),hep:getRadio('hep'),followUpRec:getVal('followUpRec'),additionalRec:getVal('additionalRec')},
+    billing,
+    meta:{clinician:Session.getClinicianName(),visitNumber:Session.getVisitCount()}
+  };
+}
+
+async function generateNote(){
+  const btns=['generateBtn','generateBtn2','generateBtn3'];
+  btns.forEach(id=>{const b=document.getElementById(id);if(b)UI.setLoading(b,true);});
+  try{
+    const data=collectFormData(); Session.save('discharge',data);
+    const injDate=data.episode.surgeryDate||data.episode.injuryDate;
+    const statusPost=injDate?`Patient is ${NoteBuilder.statusPost(injDate)} post-${data.episode.surgeryDate?'operative':'injury'} at time of discharge.`:'';
+    const userMsg=`Generate a Medicare-compliant OT discharge summary SOAP note for the IHS EHR. ${statusPost}\n\nPATIENT: ${data.patient.firstName} ${data.patient.lastName}\nDIAGNOSIS: ${data.patient.diagnosis}\nEPISODE: ${NoteBuilder.formatDate(data.episode.evalDate)} to ${NoteBuilder.formatDate(data.episode.dischargeDate)} (${data.episode.totalSessions} sessions)\nCLINICIAN: ${data.meta.clinician||'[Clinician]'}\n\nFULL DATA:\n${JSON.stringify(data,null,2)}`;
+    const result=await AI.call([{role:'user',content:userMsg}],NOTE_SYSTEM_PROMPTS.discharge);
+    currentNote=result; chatHistory=[];
+    NoteBuilder.renderPreview(result,document.getElementById('notePreview'));
+    document.getElementById('sec-preview').scrollIntoView({behavior:'smooth',block:'start'});
+    UI.toast('Discharge summary generated','success');
+  }catch(e){UI.toast('Generation failed','danger');console.error(e);}
+  finally{btns.forEach(id=>{const b=document.getElementById(id);if(b)UI.setLoading(b,false);});}
+}
+
+async function sendChat(){
+  const input=document.getElementById('chatInput'); const msg=input.value.trim();
+  if(!msg||!currentNote){if(!currentNote)UI.toast('Generate first','warning');return;}
+  appendChatMsg(msg,'user'); input.value='';
+  UI.setLoading(document.getElementById('chatSendBtn'),true);
+  try{
+    chatHistory.push({role:'user',content:`Current note:\n\n${currentNote}\n\n---\nRequest: ${msg}`});
+    const result=await AI.call(chatHistory,NOTE_SYSTEM_PROMPTS.refine);
+    chatHistory.push({role:'assistant',content:result});
+    currentNote=result; NoteBuilder.renderPreview(result,document.getElementById('notePreview'));
+    appendChatMsg(result.substring(0,100)+'… (note updated)','ai');
+  }catch(e){UI.toast('Chat failed','danger');}
+  finally{UI.setLoading(document.getElementById('chatSendBtn'),false);}
+}
+
+function sendChip(el){document.getElementById('chatInput').value=el.textContent;sendChat();}
+function appendChatMsg(text,role){const c=document.getElementById('chatMessages');const d=document.createElement('div');d.className=`chat-msg chat-msg--${role}`;d.textContent=text;c.appendChild(d);c.scrollTop=c.scrollHeight;}
+
+async function copySection(section){
+  if(!currentNote){UI.toast('Generate first','warning');return;}
+  let text=currentNote;
+  if(section!=='full'){const start=text.indexOf(`\n${section}:`);if(start===-1){UI.toast('Section not found','warning');return;}const sections=['S:','O:','A:','P:','BILLING:'];const next=sections.find(s=>s!==`${section}:`&&text.indexOf(`\n${s}`,start+1)>start);const end=next?text.indexOf(`\n${next}`,start+1):text.length;text=text.substring(start+1,end>0?end:text.length).trim();}
+  try{await navigator.clipboard.writeText(text);UI.toast(section==='full'?'Summary copied':`${section} copied`,'success');}catch(e){UI.toast('Copy failed','warning');}
+}
+
+function clearDraft(){if(!confirm('Clear this summary?'))return;Session.clear('discharge');window.location.reload();}
+function restoreDraft(data){try{if(data.patient?.firstName)document.getElementById('ptFirst').value=data.patient.firstName;if(data.patient?.lastName)document.getElementById('ptLast').value=data.patient.lastName;if(data.episode?.dischargeDate)document.getElementById('dischargeDate').value=data.episode.dischargeDate;if(data.assessment?.narrative)document.getElementById('assessmentNarrative').value=data.assessment.narrative;UI.toast('Draft restored','info');}catch(e){console.warn(e);}}
+</script>
+</body>
+</html>
