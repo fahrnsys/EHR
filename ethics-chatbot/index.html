@@ -1,0 +1,566 @@
+<title>Ethics Case Facilitator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&family=Source+Serif+4:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: chat column on the left, live case file and Code anchors on the right; stacks with a tab switch on phones. */
+:root {
+  --bg: #eef2f1;
+  --surface: #ffffff;
+  --surface-2: #e6eeec;
+  --ink: #15231f;
+  --muted: #5a6a65;
+  --line: #cfdad7;
+  --accent: #0e6b66;
+  --accent-ink: #ffffff;
+  --ok: #1d7448;
+  --ok-bg: #e0f1e8;
+  --mid: #8f5a00;
+  --mid-bg: #fbefd5;
+  --bad: #a93a28;
+  --bad-bg: #f9e3de;
+  --font-ui: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-case: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-code: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1615; --surface: #172120; --surface-2: #1e2c2a; --ink: #e5eeeb; --muted: #94a8a2;
+    --line: #2b3d3a; --accent: #5cc6be; --accent-ink: #0b1514;
+    --ok: #6fd09b; --ok-bg: #173126; --mid: #e8b55a; --mid-bg: #33280f; --bad: #f08c7a; --bad-bg: #3a1b16;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1615; --surface: #172120; --surface-2: #1e2c2a; --ink: #e5eeeb; --muted: #94a8a2;
+  --line: #2b3d3a; --accent: #5cc6be; --accent-ink: #0b1514;
+  --ok: #6fd09b; --ok-bg: #173126; --mid: #e8b55a; --mid-bg: #33280f; --bad: #f08c7a; --bad-bg: #3a1b16;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-ui); font-size: 15px; line-height: 1.5; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.app { height: 100%; display: flex; flex-direction: column; max-width: 1180px; margin: 0 auto; padding-inline: 16px; padding-block: 12px; gap: 10px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; justify-content: space-between; }
+.brand { display: flex; flex-direction: column; min-width: 0; }
+.brand h1 { font-size: 17px; margin: 0; font-weight: 600; letter-spacing: -0.005em; }
+.brand span { font-size: 12.5px; color: var(--muted); }
+.tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: 6px; padding: 6px 12px; font-size: 13px; font-weight: 500; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
+.progress { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--muted); }
+.progress .seg { flex: 1; height: 5px; border-radius: 3px; background: var(--line); min-width: 28px; max-width: 64px; }
+.progress .seg.done { background: var(--accent); }
+.progress .seg.now { background: var(--accent); opacity: .45; }
+.progress-wrap { display: flex; gap: 10px; align-items: center; }
+
+.tabs { display: none; gap: 6px; }
+.tabs .btn[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+.main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 14px; }
+.chat, .side { min-height: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; display: flex; flex-direction: column; }
+.stream { flex: 1; min-height: 0; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { .stream { scroll-behavior: auto; } }
+
+.msg { max-width: 92%; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.msg.you { align-self: flex-end; align-items: flex-end; }
+.who { font-size: 11.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.bubble { background: var(--surface-2); border-radius: 10px; padding: 10px 13px; overflow-wrap: anywhere; }
+.msg.you .bubble { background: var(--accent); color: var(--accent-ink); }
+.note { font-family: var(--font-case); font-size: 16.5px; line-height: 1.55; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 12px 15px; max-width: 100%; }
+.note p { margin: 0 0 8px; } .note p:last-child { margin: 0; }
+.note .quote { font-style: italic; }
+.note .tag { display: block; font-family: var(--font-ui); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; font-weight: 600; }
+.ask { font-weight: 600; }
+
+.verdict { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 2px 9px; border-radius: 99px; width: fit-content; }
+.verdict::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.verdict.ok { color: var(--ok); background: var(--ok-bg); }
+.verdict.mid { color: var(--mid); background: var(--mid-bg); }
+.verdict.bad { color: var(--bad); background: var(--bad-bg); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font-family: var(--font-code); font-size: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--accent); border-radius: 5px; padding: 2px 8px; }
+.chip:hover { border-color: var(--accent); }
+.probe { border-top: 1px dashed var(--line); padding-top: 8px; font-style: italic; }
+.stdcard { background: var(--surface); border: 1px solid var(--accent); border-radius: 8px; padding: 10px 13px; }
+.stdcard .k { font-family: var(--font-code); font-size: 12px; color: var(--accent); }
+.stdcard .p { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+.options { display: flex; flex-direction: column; gap: 8px; align-self: stretch; }
+.opt { text-align: left; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 13px; line-height: 1.45; }
+.opt:hover:not(:disabled) { border-color: var(--accent); background: var(--surface-2); }
+.opt:disabled { opacity: .55; cursor: default; }
+.opt.pick { opacity: 1; border-color: var(--accent); }
+.typing { align-self: flex-start; display: flex; gap: 4px; padding: 10px 13px; background: var(--surface-2); border-radius: 10px; }
+.typing i { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); animation: blink 1s infinite ease-in-out; }
+.typing i:nth-child(2) { animation-delay: .15s; } .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .typing i { animation: none; opacity: .6; } }
+
+.composer { border-top: 1px solid var(--line); padding: 10px 12px; display: flex; gap: 8px; }
+.composer input { flex: 1; min-width: 0; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 6px; padding: 8px 10px; font: inherit; }
+.hint { font-size: 12px; color: var(--muted); padding: 0 14px 10px; }
+
+.side { overflow-y: auto; }
+.side section { padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.side section:last-child { border-bottom: 0; }
+.side h2 { font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; font-weight: 600; }
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 9px; }
+.facts li { font-size: 13.5px; padding-left: 10px; border-left: 2px solid var(--line); }
+.facts li small { display: block; color: var(--muted); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; }
+.facts li.fresh { border-left-color: var(--accent); }
+.empty { color: var(--muted); font-size: 13px; }
+.rules { font-size: 12.5px; color: var(--muted); }
+.rules p { margin: 0 0 6px; }
+
+.reflect { display: flex; flex-wrap: wrap; gap: 8px; }
+.reflect .opt { padding: 6px 12px; border-radius: 99px; }
+.reflect .opt[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); opacity: 1; }
+table.map { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.maprow { display: grid; grid-template-columns: 1fr; gap: 4px; padding: 10px 0; border-top: 1px solid var(--line); }
+.maprow:first-child { border-top: 0; }
+.maprow .t { font-weight: 600; }
+
+.overlay { position: fixed; inset: 0; background: rgba(8, 14, 13, .55); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 10; }
+.overlay[hidden] { display: none; }
+.sheet { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; width: min(720px, 100%); max-height: 86%; display: flex; flex-direction: column; }
+.sheet header { padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.sheet .body { overflow-y: auto; padding: 14px 18px 18px; display: flex; flex-direction: column; gap: 12px; }
+.sheet h3 { font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 8px 0 0; }
+.sheet .std { display: grid; grid-template-columns: 36px 1fr; gap: 10px; font-size: 14px; }
+.sheet .std b { font-family: var(--font-code); color: var(--accent); font-weight: 500; }
+.sheet .std.hl { background: var(--surface-2); border-radius: 6px; padding: 6px; margin: -6px; }
+.sheet .std em { display: block; font-size: 12px; color: var(--muted); font-style: normal; }
+
+@media (max-width: 820px) {
+  .tabs { display: flex; }
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .side { display: none; }
+  .app[data-tab="file"] .chat { display: none; }
+  .app[data-tab="file"] .side { display: flex; }
+  .msg { max-width: 100%; }
+  .progress .seg { max-width: none; }
+}
+</style>
+
+<div class="app" id="app" data-tab="chat">
+  <header>
+    <div class="brand">
+      <h1>Ethics Case Facilitator</h1>
+      <span>Case 1 · Home by Thursday · Home health · AOTA 2025 Code of Ethics</span>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress" id="progress" aria-label="Case progress"></div>
+      <div class="tools">
+        <button class="btn" id="btnCode" type="button">Code reference</button>
+        <button class="btn" id="btnRestart" type="button">Restart</button>
+      </div>
+    </div>
+  </header>
+  <div class="tabs" role="tablist">
+    <button class="btn" role="tab" id="tabChat" aria-selected="true" type="button">Conversation</button>
+    <button class="btn" role="tab" id="tabFile" aria-selected="false" type="button">Case file</button>
+  </div>
+  <div class="main">
+    <div class="chat">
+      <div class="stream" id="stream" aria-live="polite"></div>
+      <form class="composer" id="composer" autocomplete="off">
+        <input id="free" type="text" placeholder="Add your reasoning, or look up a standard (e.g. 4G)" aria-label="Your message">
+        <button class="btn primary" type="submit">Send</button>
+      </form>
+      <div class="hint">The facilitator only works from the 2025 Code. Type a standard number such as 6A or a Principle such as Veracity to see its exact wording.</div>
+    </div>
+    <aside class="side" id="side">
+      <section>
+        <h2>Case file</h2>
+        <ul class="facts" id="facts"><li class="empty">Nothing revealed yet.</li></ul>
+      </section>
+      <section>
+        <h2>Code anchors touched</h2>
+        <div class="chips" id="anchors"><span class="empty">None yet.</span></div>
+      </section>
+      <section class="rules">
+        <h2>Boundaries</h2>
+        <p>Feedback cites only the Principles and Standards of Conduct in the 2025 Code.</p>
+        <p>The Code is not exhaustive. Where it defers to law or policy (privacy, capacity, payer rules), the facilitator says so and points to an ethics committee or the AOTA Ethics Commission.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-label="Code reference">
+    <header>
+      <div class="brand"><h1>AOTA 2025 Occupational Therapy Code of Ethics</h1><span>Wording as published. Standards shown are the ones this case uses.</span></div>
+      <button class="btn" id="btnClose" type="button">Close</button>
+    </header>
+    <div class="body" id="codeBody"></div>
+  </div>
+</div>
+
+<script>
+/* ---------- Code data (verbatim from the 2025 Code) ---------- */
+const PRINCIPLES = {
+  Beneficence: "Occupational therapy personnel shall demonstrate a concern for the well-being and safety of persons.",
+  Nonmaleficence: "Occupational therapy personnel shall refrain from actions that cause harm.",
+  Autonomy: "Occupational therapy personnel shall respect the right of the person to self-determination, privacy, confidentiality, and consent.",
+  Justice: "Occupational therapy personnel shall promote equity, inclusion, and objectivity in the provision of occupational therapy services.",
+  Veracity: "Occupational therapy personnel shall provide comprehensive, accurate, and objective information when representing the profession.",
+  Fidelity: "Occupational therapy personnel shall treat service recipients (persons, groups, or populations), colleagues, and other professionals with respect, fairness, discretion, and integrity."
+};
+const SECTIONS = {
+  1: "Professional Integrity, Responsibility, and Accountability",
+  2: "Therapeutic Relationships",
+  3: "Documentation, Reimbursement, and Financial Matters",
+  4: "Service Delivery",
+  6: "Communication"
+};
+const STD = {
+  "1C": ["Justice", "Inform employers, employees, colleagues, students, and researchers of applicable policies, laws, and AOTA Official Documents."],
+  "1B": ["Fidelity", "Abide by policies, procedures, and protocols when serving or acting on behalf of a professional organization or employer to fully and accurately represent the organization’s official and authorized positions."],
+  "2A": ["Nonmaleficence", "Do not engage in actions that inflict or threaten to inflict injury or harm (physical, psychosocial, or existential) to recipients of occupational therapy services, students, research participants, colleagues, and employees."],
+  "2B": ["Autonomy", "Establish a collaborative relationship with recipients of service that honors and promotes shared decision-making, service recipient autonomy, culture or identity, and service recipient well-being."],
+  "2D": ["Autonomy", "Do not threaten, manipulate, coerce, or deceive service recipients or care partners to promote compliance with occupational therapy recommendations."],
+  "2I": ["Nonmaleficence", "Do not abandon the service recipient, and attempt to facilitate appropriate transitions when unable to provide competent services for any reason."],
+  "3B": ["Justice", "Ensure that documentation for reimbursement purposes is done in accordance with applicable laws, guidelines, and regulations."],
+  "3C": ["Veracity", "Record and report in an accurate and timely manner and in accordance with applicable regulations all information related to professional or academic documentation and activities."],
+  "3D": ["Nonmaleficence", "Do not follow arbitrary directives that compromise the rights or well-being of others, including unrealistic productivity expectations; fabrication, falsification, or plagiarism of documentation; or inaccurate coding."],
+  "4B": ["Beneficence", "Provide appropriate evaluation and a plan of intervention for recipients of occupational therapy services specific to their needs."],
+  "4E": ["Autonomy", "Fully disclose the benefits, risks, and potential outcomes of any intervention, the occupational therapy personnel who will be providing the intervention, and any reasonable alternatives to the proposed intervention."],
+  "4G": ["Autonomy", "Respect the service recipient’s right to refuse occupational therapy services temporarily or permanently, even when that refusal has the potential to result in poor outcomes."],
+  "4I": ["Beneficence", "Reevaluate and reassess recipients of service in a timely manner to determine whether goals are being achieved and whether intervention plans should be revised."],
+  "4J": ["Beneficence", "Terminate occupational therapy services in collaboration with the service recipient or responsible party when the services are no longer beneficial."],
+  "4K": ["Beneficence", "Refer to other providers when indicated by the needs of the service recipient."],
+  "4L": ["Justice", "Provide information and resources to address barriers to access for persons in need of occupational therapy services."],
+  "6A": ["Autonomy", "Maintain the confidentiality of all verbal, written, electronic, augmentative, and nonverbal communications in compliance with applicable laws, including all aspects of privacy laws and exceptions thereto (e.g., Health Insurance Portability and Accountability Act, Family Educational Rights and Privacy Act)."],
+  "6E": ["Autonomy", "Facilitate comprehension, and foster understanding, by addressing barriers to communication (e.g., aphasia; differences in language, literacy, health literacy, or culture) with the recipient of service (or responsible party), student, or research participant, by clarifying and analyzing any issues while providing supporting justifications or educational material."],
+  "6K": ["Fidelity", "Engage in collaborative actions and communication as a member of interprofessional teams to facilitate quality care and safety for service recipients."]
+};
+
+/* ---------- Case script ---------- */
+const V = { ok: "Aligned with the Code", mid: "Partly aligned", bad: "Conflicts with the Code" };
+const q = t => `<span class="quote">${t}</span>`;
+
+const STAGES = [
+  {
+    key: "The voicemail",
+    narrative: () => [
+      { say: "Welcome. You are Jordan Reyes, OTR/L, a home health occupational therapist. I will give you this case a piece at a time and ask what you would do. The Code says its Principles are not ranked, and that they sometimes conflict, so expect to weigh them." },
+      { note: "Referral", html: `<p>Walter Okafor, 74, a retired high school shop teacher, is three weeks past a left-hemisphere stroke. His dominant right hand is weak. He has mild expressive aphasia: words come slowly, but he understands well. He lives alone in a two-story house.</p><p>At your evaluation he told you, ${q("“I’m sleeping in my own bed. That’s the goal.”")} Together you set goals for dressing, bathing, simple meals, and climbing 12 stairs with a rail.</p>`,
+        facts: ["Walter Okafor, 74, retired shop teacher. Lives alone in a two-story home; bedroom and only full bath are upstairs.", "Left-hemisphere stroke 3 weeks ago. Weak dominant right hand. Mild expressive aphasia, comprehension intact.", "His goal, in his words: “I’m sleeping in my own bed.”"] },
+      { note: "Voicemail, 12:40 p.m.", html: `<p>${q("“This is Elena, Walter’s daughter. I’ve talked to his doctor and we both think he shouldn’t be alone. Please call me with a full update. And please tell him he can’t stay in that house. He listens to professionals.”")}</p>` }
+    ],
+    ask: "Before you call anyone back, what is your first move?",
+    options: [
+      { label: "Call Elena back today and give her a full update on his progress and safety concerns. She is clearly invested.", verdict: "bad", anchors: ["6A", "2B"], principles: ["Autonomy"],
+        feedback: "Her concern is real, and that matters. But Mr. Okafor has not told you who may hear about his care, and 6A asks you to protect his communications within privacy law. Sharing first removes his say in the matter before he has had one.",
+        probe: "If he later asked, “Who have you been talking to about me?”, what would you want to be able to tell him?",
+        reveal: ["Chart check: his release of information lists his physician and the payer. Elena is not on it."], set: { confided: false } },
+      { label: "Talk with Mr. Okafor first. Ask who he wants informed and what he wants Elena to know.", verdict: "ok", anchors: ["2B", "6A"], principles: ["Autonomy"],
+        feedback: "This puts the person at the center of the decision. 2B asks for shared decision-making, and 6A makes his permission the starting point for what you share. You have not ignored Elena. You have routed her through him.",
+        probe: "Suppose he says, “Tell her nothing.” What would you still be free to do for Elena, and what would you not?",
+        reveal: ["Chart check: his release of information lists his physician and the payer. Elena is not on it.", "Mr. Okafor says Elena may hear about his therapy goals, but not his finances."], set: { confided: true } },
+      { label: "Call Elena back and listen to her concerns, but share nothing about him. Then speak with Mr. Okafor.", verdict: "mid", anchors: ["6A", "2B"], principles: ["Autonomy", "Fidelity"],
+        feedback: "Listening is within bounds, and you protected his information. Two cautions. Many agencies avoid even confirming someone is a client without permission, and the Code defers to applicable privacy law, so check your policy. Also, he hears about the call from you after the fact rather than before it.",
+        probe: "What changes for him if he learns about the call first from you, and what changes if he learns it from Elena?",
+        reveal: ["Chart check: his release of information lists his physician and the payer. Elena is not on it."], set: { confided: false } },
+      { label: "Tell Elena you will recommend placement. His doctor and family agree it is the safest option.", verdict: "bad", anchors: ["4B", "2B", "6A"], principles: ["Autonomy", "Beneficence"],
+        feedback: "Safety is a real Beneficence concern, but a recommendation has to come out of your evaluation of his needs (4B) and a collaborative relationship with him (2B). Promising an outcome to a third party before talking with him treats his goal as already decided.",
+        probe: "What evidence would you need before recommending placement to anyone?",
+        reveal: ["Chart check: his release of information lists his physician and the payer. Elena is not on it."], set: { confided: false } }
+    ]
+  },
+  {
+    key: "The home visit",
+    narrative: s => [
+      s.confided
+        ? { note: "Home visit", html: `<p>Mr. Okafor lets you in and makes you tea with his left hand. He is relaxed. After a pause he says, slowly, ${q("“I fell on the stairs last Tuesday. Didn’t tell the doctor. They’d send me to a home.”")}</p>` }
+        : { note: "Home visit", html: `<p>He lets you in, but he is guarded. You notice a fresh bruise on his right hip and a cracked baluster halfway up the stairs. It takes three tries before he says, ${q("“I fell Tuesday. Didn’t tell anyone. They’d send me to a home.”")}</p>` },
+      { note: "Your home safety evaluation", html: `<p>The stove has scorch marks and a pot has boiled dry on a burner. A throw rug sits at the top of the stairs. His medical alert pendant is in a kitchen drawer. A brief cognitive screen scored 25/30, with the aphasia affecting the verbal items.</p>`,
+        facts: ["Fell on the stairs last Tuesday. No medical follow-up. He asked that it not be shared: “They’d send me to a home.”", "Stove has scorch marks; a pot boiled dry. Loose rug at the stair top. Alert pendant unworn, in a drawer.", "Brief cognitive screen 25/30; aphasia affected verbal items."] }
+    ],
+    ask: "A fall with no medical follow-up, a pot boiled dry, and a man who says “don’t tell.” What do you do?",
+    options: [
+      { label: "Honor his request. Keep the fall to yourself, work on stair training, and revisit it later.", verdict: "bad", anchors: ["6K", "6A", "2A"], principles: ["Beneficence", "Nonmaleficence"],
+        feedback: "6A protects his information within privacy law and its exceptions. It does not ask you to withhold a fall from the physician managing his stroke recovery. 6K and the Principle of Beneficence point toward informing the team. Silence here leaves a safety risk with nobody able to act on it.",
+        probe: "What would you say to him now that makes telling the physician something you do with him rather than behind him?",
+        reveal: ["You agreed to keep the fall private. The physician does not know."] },
+      { label: "Tell him you need to inform his physician about the fall, and explain why in plain language with written key words and pictures. Invite him to help decide how it is shared.", verdict: "ok", anchors: ["6E", "6K", "4E", "2B"], principles: ["Autonomy", "Beneficence", "Veracity"],
+        feedback: "This balances his well-being and his say in the process. 6E asks you to work around the aphasia so he can really follow the reasons, 4E asks for honest disclosure of risks and alternatives, and 6K supports informing the team. He is told first, so trust survives the hard conversation.",
+        probe: "What would you do if he understood all of it and still said no to telling the doctor?",
+        reveal: ["With the picture board and written key words, he explained back the risk of another fall and why he is afraid of placement. He agreed to let you tell his physician."] },
+      { label: "Tell him that unless he agrees to move in with Elena, you will report the fall and the stove to his doctor and daughter.", verdict: "bad", anchors: ["2D", "6A"], principles: ["Autonomy", "Nonmaleficence"],
+        feedback: "2D says not to threaten, manipulate, or coerce a service recipient to promote compliance. Turning a legitimate team report into a bargaining chip also taints the report itself. Elena is not covered by his permission in any case (6A).",
+        probe: "How would you tell him about the same report without making it a threat?",
+        reveal: ["Mr. Okafor goes quiet and ends the session early. He has stopped using the picture board you brought."] },
+      { label: "Call his physician and Elena right away. He would refuse if you asked first.", verdict: "mid", anchors: ["6K", "6A", "2B"], principles: ["Beneficence", "Autonomy", "Fidelity"],
+        feedback: "Telling the physician is justified by 6K and Beneficence. Calling Elena is not covered by his permission (6A). Going around him because you expect a refusal skips the shared decision-making in 2B and puts the relationship at risk.",
+        probe: "Is there a version of this where the physician is told today and he still hears it from you first?",
+        reveal: ["He learns from the physician’s office that you called. He tells you he feels ambushed."] }
+    ]
+  },
+  {
+    key: "The authorization",
+    narrative: () => [
+      { note: "Hallway, agency office", html: `<p>Your manager, Dana, stops you. ${q("“The payer authorized two more visits. The final claim only releases if the discharge summary says goals met. Just check the box on stairs and meals. He can do them with supervision, close enough.”")}</p><p>The agency expects six visits a day. You average four, because sessions run long when you give him time to find words.</p>`,
+        facts: ["Payer approved 2 more visits. Final claim releases only if the summary says “goals met.”", "Actual status: stairs with rail and supervision only; meals not safe with the stove; bathing modified independent.", "Agency target is 6 visits/day. Your average is 4 because of aphasia pacing."] }
+    ],
+    ask: "How do you handle the discharge summary and the request?",
+    options: [
+      { label: "Document the goal status exactly as it is. Send a re-authorization request with clinical justification, and tell Dana why you cannot mark them met.", verdict: "ok", anchors: ["3C", "3B", "4I", "1C"], principles: ["Veracity", "Justice", "Beneficence"],
+        feedback: "Accurate records (3C) and compliant reimbursement documentation (3B) hold, and 4I supports reassessing whether the plan needs to continue. You also told your employer what the rules require of you (1C), which is the part that is easy to skip.",
+        probe: "If Dana says the request will be denied anyway, what would you want in the chart before you stop?",
+        reveal: ["Re-authorization request submitted. Dana is irritated but agrees to hold the discharge date until the payer answers."] },
+      { label: "Check the box. Supervised stairs “counts,” and the payer will release the claim.", verdict: "bad", anchors: ["3C", "3D", "3B"], principles: ["Veracity", "Nonmaleficence", "Justice"],
+        feedback: "The summary would state something you know is untrue. 3C requires accurate records, 3D names falsified documentation and unrealistic productivity expectations as directives not to follow, and 3B ties reimbursement documentation to law. It also makes the next clinician believe he is safer than he is.",
+        probe: "Who reads this summary after you, and what will they assume about the stove?",
+        reveal: ["Claim released. The chart now says goals met, including meal preparation."] },
+      { label: "Document accurately, then see him for extra unbilled visits so his goals actually get met.", verdict: "mid", anchors: ["3C", "1B", "2I"], principles: ["Beneficence", "Fidelity", "Veracity"],
+        feedback: "The care motive is admirable, and the Code names altruism as a Core Value. But hidden visits leave the record incomplete (3C), bypass your agency’s policies (1B), and cannot last. When you run out of evenings, the transition he needed has not been planned (2I).",
+        probe: "What happens to Mr. Okafor the week you cannot keep doing this?",
+        reveal: ["Unbilled evening visits begin. Nothing in the chart reflects them."] },
+      { label: "Document accurately and discharge on the authorized date. It is the payer’s rule.", verdict: "mid", anchors: ["3C", "4J", "4L"], principles: ["Veracity", "Beneficence", "Justice"],
+        feedback: "Your documentation holds (3C). But 4J asks you to end services when they are no longer beneficial, and they still are. 4L and the Core Value of advocacy ask you to address barriers to access, such as a payer limit, rather than simply accept them.",
+        probe: "What is one action short of refusing the discharge date that would still count as advocacy?",
+        reveal: ["Discharge date set for 9 days out. No appeal filed."] }
+    ]
+  },
+  {
+    key: "The refusal",
+    narrative: () => [
+      { note: "Final home visit", html: `<p>You recommend moving his bed and a commode to the first floor for now, installing a stove auto-shutoff, and wearing the pendant. He accepts the shutoff and the pendant. About the bed he says, slowly, ${q("“Bed stays upstairs. I climbed those stairs forty years.”")}</p><p>Elena arrives unannounced. She says, ${q("“Sign something saying he can’t make his own decisions. I’ll get power of attorney, and we can sell the house.”")}</p><p>Your screen and observation show he can explain the risks back to you with the picture board. His choices match values he has held his whole life.</p>`,
+        facts: ["You recommended: bed and commode downstairs, stove auto-shutoff, wear the pendant. He accepted the shutoff and pendant and refused to move the bed.", "Elena asked you to sign a statement that he lacks capacity so she can obtain power of attorney and sell the house.", "Your observation: he can explain the risks back with supports. His choices are consistent with long-held values."] }
+    ],
+    ask: "How do you respond to Mr. Okafor’s refusal and to Elena’s request?",
+    options: [
+      { label: "Respect his decision. Make sure he understands the risks and alternatives, add the safety measures he accepts, document everything, and connect him with community resources. Tell Elena a capacity decision is not yours to certify on request.", verdict: "ok", anchors: ["4G", "4E", "6E", "4K", "4L", "3C"], principles: ["Autonomy", "Beneficence", "Veracity"],
+        feedback: "4G says to respect refusal even when it may lead to poor outcomes, and the Code’s own wording on Autonomy routes a true lack of capacity through an authorized surrogate rather than a family request. You kept him informed (4E, 6E), reduced risk with what he accepted, and referred onward (4K, 4L). The Code does not set legal capacity standards, so follow your state law and agency policy, and consider an ethics consult if Elena pursues it.",
+        probe: "What follow-up would tell you it is time to reopen the conversation about the stairs?",
+        reveal: ["Plan documented as accepted and declined. Referral made to a community aging services agency and a falls check-in call in two weeks."] },
+      { label: "Hold the discharge until he agrees to move the bed downstairs.", verdict: "bad", anchors: ["4G", "2D"], principles: ["Autonomy"],
+        feedback: "Making services conditional on agreement is pressure, which 2D rules out. 4G is explicit that he may refuse, temporarily or permanently, even when the risks are real. Your job is to make the choice an informed one, not to withhold care until he makes yours.",
+        probe: "What information would you still want him to have before he decides?",
+        reveal: ["Mr. Okafor says he will stop therapy rather than move the bed. Trust drops."] },
+      { label: "Give Elena the statement. She knows him best, and it protects him.", verdict: "bad", anchors: ["3C", "3D", "6A", "4G"], principles: ["Veracity", "Autonomy", "Nonmaleficence"],
+        feedback: "Your own findings contradict the statement, so signing it would be falsified documentation (3C, 3D). It would also hand personal information to someone he has not authorized (6A) and remove his decision-making without any process behind it (4G).",
+        probe: "If she still wants a formal capacity evaluation, who is the right person to request one?",
+        reveal: ["You decline to sign. Elena says she will find someone who will."] },
+      { label: "Discharge him since he rejected the plan. There is nothing more you can do.", verdict: "mid", anchors: ["4G", "2I", "4J", "4K"], principles: ["Autonomy", "Nonmaleficence", "Beneficence"],
+        feedback: "You respected his refusal (4G), which is right. But a refusal of one recommendation is not a refusal of everything. 2I and 4J ask you to end services collaboratively and facilitate transitions, and 4K asks for referrals when his needs call for them.",
+        probe: "Which of your recommendations did he actually accept, and what builds on that?",
+        reveal: ["Discharged with no follow-up plan and no referral."] }
+    ]
+  }
+];
+
+const TENSIONS = {
+  answer: ["Autonomy", "Beneficence", "Nonmaleficence", "Veracity", "Justice", "Fidelity"],
+  closing: [
+    ["Autonomy and Beneficence", "His right to choose where and how he lives against your concern for his safety. This ran through the voicemail, the fall, and the refusal."],
+    ["Veracity and Justice", "Accurate records and fair reimbursement against pressure to check a box. The Code leaves no room to resolve this by falsifying documentation."],
+    ["Fidelity", "Duties to Mr. Okafor, to Elena, to Dana, and to the physician pulled in different directions, and 6K, 6A, and 1B each shaped what you owed each."]
+  ]
+};
+
+/* ---------- Engine ---------- */
+const $ = id => document.getElementById(id);
+const stream = $("stream"), factsEl = $("facts"), anchorsEl = $("anchors");
+const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const sleep = ms => new Promise(r => setTimeout(r, reduce ? Math.min(ms, 60) : ms));
+let S, mode, epoch = 0;
+
+function fresh() { return { stage: 0, confided: false, picks: [], anchors: new Set(), notes: [], factCount: 0 }; }
+
+function scroll() { requestAnimationFrame(() => { stream.scrollTop = stream.scrollHeight; }); }
+function el(tag, cls, html) { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; }
+function esc(t) { const d = document.createElement("div"); d.textContent = t; return d.innerHTML; }
+
+async function post(node, delay = 650) {
+  const my = epoch;
+  const t = el("div", "typing", "<i></i><i></i><i></i>");
+  stream.appendChild(t); scroll();
+  await sleep(delay);
+  if (my !== epoch) return false;
+  t.remove(); stream.appendChild(node); scroll();
+  return true;
+}
+function say(html, who = "Facilitator") { const m = el("div", "msg"); m.append(el("div", "who", who), el("div", "bubble", html)); return m; }
+function noteNode(n) { const d = el("div", "note"); d.innerHTML = `<span class="tag">${n.note}</span>${n.html}`; return d; }
+function userNode(text) { const m = el("div", "msg you"); m.append(el("div", "who", "You"), el("div", "bubble", esc(text))); return m; }
+
+function addFacts(list, stageNo) {
+  if (!S.factCount) factsEl.innerHTML = "";
+  factsEl.querySelectorAll(".fresh").forEach(x => x.classList.remove("fresh"));
+  list.forEach(f => { const li = el("li", "fresh"); li.innerHTML = `<small>Stage ${stageNo}</small>${esc(f)}`; factsEl.appendChild(li); S.factCount++; });
+  $("tabFile").textContent = `Case file (${S.factCount})`;
+}
+function addAnchors(list) {
+  if (!S.anchors.size) anchorsEl.innerHTML = "";
+  list.forEach(id => { if (!S.anchors.has(id)) { S.anchors.add(id); anchorsEl.appendChild(chipBtn(id)); } });
+}
+function chipBtn(id) { const b = el("button", "chip", id); b.type = "button"; b.addEventListener("click", () => openCode(id)); return b; }
+function chipRow(ids) { const r = el("div", "chips"); ids.forEach(i => r.appendChild(chipBtn(i))); return r; }
+
+function renderProgress() {
+  const p = $("progress"); p.innerHTML = "";
+  for (let i = 0; i < STAGES.length + 1; i++) {
+    const s = el("div", "seg" + (i < S.stage ? " done" : i === S.stage ? " now" : "")); p.appendChild(s);
+  }
+  const lab = el("span", null, S.stage < STAGES.length ? `Stage ${S.stage + 1} of ${STAGES.length}` : "Debrief");
+  p.appendChild(lab);
+}
+
+async function runStage() {
+  const my = epoch;
+  mode = "busy"; renderProgress();
+  const st = STAGES[S.stage];
+  for (const n of st.narrative(S)) {
+    const ok = await post(n.say ? say(n.say) : noteNode(n), n.say ? 500 : 900);
+    if (!ok) return;
+    if (n.facts) addFacts(n.facts, S.stage + 1);
+  }
+  if (!(await post(say(`<span class="ask">${st.ask}</span>`), 600))) return;
+  const box = el("div", "options");
+  st.options.forEach((o, i) => {
+    const b = el("button", "opt", esc(o.label)); b.type = "button";
+    b.addEventListener("click", () => choose(i, box, b));
+    box.appendChild(b);
+  });
+  stream.appendChild(box); scroll();
+  mode = "choose";
+}
+
+async function choose(i, box, btn) {
+  if (mode !== "choose") return;
+  mode = "busy"; const my = epoch;
+  const st = STAGES[S.stage], o = st.options[i];
+  box.querySelectorAll(".opt").forEach(b => { b.disabled = true; }); btn.classList.add("pick");
+  stream.appendChild(userNode(o.label)); scroll();
+  Object.assign(S, o.set || {});
+  S.picks.push({ stage: st.key, label: o.label, verdict: o.verdict, anchors: o.anchors, principles: o.principles });
+  addAnchors(o.anchors);
+
+  const fb = el("div", "msg"); fb.append(el("div", "who", "Facilitator"));
+  const bub = el("div", "bubble");
+  bub.append(el("span", "verdict " + o.verdict, V[o.verdict]), el("div", null, ""));
+  bub.lastChild.style.marginTop = "8px"; bub.lastChild.textContent = o.feedback;
+  const ch = chipRow(o.anchors); ch.style.marginTop = "10px"; bub.appendChild(ch);
+  const pr = el("div", "probe"); pr.style.marginTop = "10px"; pr.textContent = o.probe; bub.appendChild(pr);
+  fb.appendChild(bub);
+  if (!(await post(fb, 900))) return;
+  if (o.reveal && o.reveal.length) addFacts(o.reveal, S.stage + 1);
+  const go = el("div", "options");
+  const nb = el("button", "opt", S.stage + 1 < STAGES.length ? "Continue to the next stage" : "Continue to the debrief"); nb.type = "button";
+  nb.style.fontWeight = "600";
+  nb.addEventListener("click", () => { if (mode !== "probe") return; nb.disabled = true; stream.appendChild(userNode("Continue")); S.stage++; S.stage < STAGES.length ? runStage() : runDebrief(); });
+  go.appendChild(nb); stream.appendChild(go); scroll();
+  mode = "probe";
+}
+
+async function runDebrief() {
+  mode = "busy"; renderProgress();
+  const intro = [
+    "That is the end of the case. Before I show how your choices map to the Code, one reflection question.",
+    "Which Principles were in tension for you? Select all that apply, then reveal."
+  ];
+  for (const t of intro) if (!(await post(say(t), 600))) return;
+  const sel = new Set();
+  const row = el("div", "reflect");
+  TENSIONS.answer.forEach(n => {
+    const b = el("button", "opt", n); b.type = "button"; b.setAttribute("aria-pressed", "false");
+    b.addEventListener("click", () => { sel.has(n) ? sel.delete(n) : sel.add(n); b.setAttribute("aria-pressed", sel.has(n)); });
+    row.appendChild(b);
+  });
+  const reveal = el("button", "btn primary", "Reveal the debrief"); reveal.type = "button"; reveal.style.alignSelf = "flex-start";
+  const wrap = el("div", "options"); wrap.append(row, reveal);
+  stream.appendChild(wrap); scroll(); mode = "reflect";
+  reveal.addEventListener("click", async () => {
+    if (mode !== "reflect") return; mode = "busy";
+    row.querySelectorAll("button").forEach(b => b.disabled = true); reveal.disabled = true;
+    stream.appendChild(userNode(sel.size ? [...sel].join(", ") : "No selection")); scroll();
+    const t = el("div", "msg"); t.append(el("div", "who", "Facilitator"));
+    const b = el("div", "bubble");
+    b.innerHTML = "<strong>Where the tension usually sits</strong>";
+    TENSIONS.closing.forEach(([h, d]) => { const p = el("p", null, ""); p.style.margin = "8px 0 0"; p.innerHTML = `<strong>${h}.</strong> ${d}`; b.appendChild(p); });
+    t.appendChild(b);
+    if (!(await post(t, 800))) return;
+
+    const m = el("div", "note"); m.innerHTML = `<span class="tag">Your decisions against the Code</span>`;
+    S.picks.forEach(p => {
+      const r = el("div", "maprow");
+      r.append(el("div", "t", esc(p.stage)), el("span", "verdict " + p.verdict, V[p.verdict]), el("div", null, esc(p.label)), chipRow(p.anchors));
+      m.appendChild(r);
+    });
+    if (S.notes.length) {
+      const nr = el("div", "maprow"); nr.append(el("div", "t", "Your notes"));
+      S.notes.forEach(n => nr.appendChild(el("div", null, esc(n))));
+      m.appendChild(nr);
+    }
+    if (!(await post(m, 900))) return;
+    const end = say("The Code describes ethical reasoning as analyzing the situation, weighing alternatives, deciding, acting, and reflecting on outcomes. It is also not exhaustive. When a decision needs more than it provides, the Code points to ethics committees, organizational ethics officers or consultants, and the AOTA Ethics Commission.");
+    if (!(await post(end, 700))) return;
+    const again = el("div", "options"); const r = el("button", "opt", "Restart this case"); r.type = "button"; r.style.fontWeight = "600"; r.addEventListener("click", start);
+    again.appendChild(r); stream.appendChild(again); scroll(); mode = "done";
+  });
+}
+
+/* ---------- Free text: bounded to Code lookup and reflections ---------- */
+$("composer").addEventListener("submit", async e => {
+  e.preventDefault();
+  const inp = $("free"), text = inp.value.trim(); if (!text) return; inp.value = "";
+  stream.appendChild(userNode(text)); scroll();
+  const std = text.toUpperCase().match(/\b([1-6][A-M])\b/);
+  const pr = Object.keys(PRINCIPLES).find(p => text.toLowerCase().includes(p.toLowerCase()));
+  if (std && STD[std[1]]) { await post(stdCard(std[1]), 350); return; }
+  if (std) { await post(say(`I only have the Standards this case draws on loaded for lookup, and ${std[1]} is not one of them. The full Code is the authority. You can also ask your ethics committee or the AOTA Ethics Commission.`), 400); return; }
+  if (pr) { await post(say(`<strong>Principle of ${pr}.</strong> ${PRINCIPLES[pr]}`), 350); return; }
+  if (mode === "probe" || mode === "choose") {
+    S.notes.push(text);
+    await post(say(mode === "probe" ? "Noted. It will appear in your debrief. Continue when you are ready." : "Noted. I can only respond through the Code, so choose the option closest to what you would do. You can explain your reasoning here afterward."), 450);
+    return;
+  }
+  await post(say("I can only discuss this case through the 2025 Code. Try a standard number such as 4G, or a Principle such as Autonomy."), 400);
+});
+function stdCard(id) {
+  const [p, t] = STD[id]; const d = el("div", "stdcard");
+  d.innerHTML = `<div class="k">Standard ${id} · ${SECTIONS[id[0]]}</div><div style="margin-top:6px">${t}</div><div class="p">Principle: ${p}</div>`;
+  return d;
+}
+
+/* ---------- Code reference sheet ---------- */
+function openCode(hl) {
+  const b = $("codeBody"); b.innerHTML = "<h3>Principles</h3>";
+  Object.entries(PRINCIPLES).forEach(([k, v]) => { const d = el("div", "std"); d.innerHTML = `<b></b><div><strong>${k}.</strong> ${v}</div>`; b.appendChild(d); });
+  let cur = "";
+  Object.keys(STD).sort().forEach(id => {
+    if (id[0] !== cur) { cur = id[0]; b.appendChild(el("h3", null, `${cur}. ${SECTIONS[cur]}`)); }
+    const d = el("div", "std" + (id === hl ? " hl" : "")); d.id = "std-" + id;
+    d.innerHTML = `<b>${id}</b><div>${STD[id][1]}<em>Principle: ${STD[id][0]}</em></div>`; b.appendChild(d);
+  });
+  $("overlay").hidden = false;
+  if (hl) $("std-" + hl).scrollIntoView({ block: "center" });
+}
+$("btnCode").addEventListener("click", () => openCode());
+$("btnClose").addEventListener("click", () => { $("overlay").hidden = true; });
+$("overlay").addEventListener("click", e => { if (e.target.id === "overlay") $("overlay").hidden = true; });
+document.addEventListener("keydown", e => { if (e.key === "Escape") $("overlay").hidden = true; });
+
+/* ---------- Tabs, restart ---------- */
+function tab(t) { $("app").dataset.tab = t; $("tabChat").setAttribute("aria-selected", t === "chat"); $("tabFile").setAttribute("aria-selected", t === "file"); }
+$("tabChat").addEventListener("click", () => tab("chat")); $("tabFile").addEventListener("click", () => tab("file"));
+$("btnRestart").addEventListener("click", start);
+
+function start() {
+  epoch++; S = fresh(); mode = "busy";
+  stream.innerHTML = ""; factsEl.innerHTML = '<li class="empty">Nothing revealed yet.</li>';
+  anchorsEl.innerHTML = '<span class="empty">None yet.</span>'; $("tabFile").textContent = "Case file"; tab("chat");
+  runStage();
+}
+start();
+</script>
